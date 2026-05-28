@@ -1,0 +1,13 @@
+[
+  {
+    "entity": "Reservation",
+    "stage": "Evidence Engine output",
+    "score": 0,
+    "sources": [
+      "route"
+    ],
+    "qualificationPassed": false,
+    "rejectionReason": "",
+    "timestamp": "2026-05-28T18:16:06.054Z"
+  }
+]

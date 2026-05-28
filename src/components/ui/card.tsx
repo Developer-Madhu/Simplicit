@@ -1,0 +1,28 @@
+import type { HTMLAttributes } from "react";
+
+import { cn } from "@/lib/utils";
+
+export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("rounded-xl border border-border bg-surface shadow-soft", className)}
+      {...props}
+    />
+  );
+}
+
+export function ElevatedCard({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-border bg-surface-2 shadow-panel",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+

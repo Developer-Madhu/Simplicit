@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StackForge — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { height: 100%; margin: 0; background: #f0eee9; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  #root { height: 100%; }
+  /* The design_canvas uses warm bg by default. Override card wrapper to dark for our dark screens to look natural in their frame. */
+  .dc-card { background: #0A0A0B !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="components/Icons.jsx"></script>
+<script type="text/babel" src="components/Chrome.jsx"></script>
+<script type="text/babel" src="components/UI.jsx"></script>
+<script type="text/babel" src="data/fixtures.jsx"></script>
+<script type="text/babel" src="screens/Workspace.jsx"></script>
+<script type="text/babel" src="screens/Landing.jsx"></script>
+<script type="text/babel" src="screens/Auth.jsx"></script>
+<script type="text/babel" src="screens/Dashboard.jsx"></script>
+<script type="text/babel" src="screens/GenerationResult.jsx"></script>
+<script type="text/babel" src="screens/Architecture.jsx"></script>
+<script type="text/babel" src="screens/Settings.jsx"></script>
+<script type="text/babel" src="screens/Deploy.jsx"></script>
+<script type="text/babel" src="screens/States.jsx"></script>
+
+<script type="text/babel">
+const { useEffect } = React;
+
+// Helper to size each artboard's inner content correctly.
+const Frame = ({ children, w, h }) => (
+  <div style={{ width: w, height: h, overflow: 'hidden', background: '#0A0A0B' }}>
+    {children}
+  </div>
+);
+
+function App() {
+  return (
+    <DesignCanvas>
+      {/* ------------- INTRO ------------- */}
+      <DCSection id="overview" title="StackForge" subtitle="AI-powered backend generation platform · 10-screen design exploration">
+        <DCArtboard id="brand" label="System · color, type, components" width={1280} height={760}>
+          <BrandSheet />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- MARKETING ------------- */}
+      <DCSection id="marketing" title="01 · Marketing site" subtitle="The conversion surface — landing, hero, features, CTA.">
+        <DCArtboard id="landing" label="Landing page (full)" width={1440} height={3700}>
+          <Frame w={1440} h={3700}><window.Landing /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- AUTH ------------- */}
+      <DCSection id="auth" title="02 · Authentication" subtitle="Split-layout auth with brand panel, OAuth row, and email forms.">
+        <DCArtboard id="signin" label="Sign in" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.SignIn /></Frame>
+        </DCArtboard>
+        <DCArtboard id="signup" label="Sign up" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.SignUp /></Frame>
+        </DCArtboard>
+        <DCArtboard id="forgot" label="Forgot password" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.ForgotPassword /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- WORKSPACE (interactive prototype) ------------- */}
+      <DCSection id="workspace" title="03 · Main AI Workspace" subtitle="The centerpiece — interactive: type a prompt, hit ⌘↵, watch it generate. Open fullscreen to use.">
+        <DCArtboard id="workspace" label="Workspace · interactive (⌘K for palette)" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.Workspace /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- GENERATION RESULT ------------- */}
+      <DCSection id="result" title="04 · Generation Result" subtitle="Inspect everything the architect generated — overview, schema, API, auth, env.">
+        <DCArtboard id="result-overview" label="Overview tab" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.GenerationResult /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- DASHBOARD ------------- */}
+      <DCSection id="dashboard" title="05 · Project Dashboard" subtitle="Workspace overview — projects, activity, usage.">
+        <DCArtboard id="dashboard" label="Projects · grid view" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.Dashboard /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- ARCHITECTURE ------------- */}
+      <DCSection id="architecture" title="06 · Architecture Preview" subtitle="Interactive system graph with inspector, layers, minimap.">
+        <DCArtboard id="arch" label="Architecture canvas" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.Architecture /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- SETTINGS ------------- */}
+      <DCSection id="settings" title="07 · Settings" subtitle="Profile, AI providers, API keys, integrations, billing.">
+        <DCArtboard id="settings" label="Settings · API keys" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.Settings /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- DEPLOY ------------- */}
+      <DCSection id="deploy" title="08 · Export / Deployment Flow" subtitle="Five-step wizard from review → live deployment.">
+        <DCArtboard id="deploy" label="Deployment wizard · step 02 (env)" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.Deploy /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- EMPTY STATES ------------- */}
+      <DCSection id="empty" title="09 · Empty states" subtitle="Polished blank states for every dead-end.">
+        <DCArtboard id="empty-projects" label="No projects" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.EmptyProjects /></Frame>
+        </DCArtboard>
+        <DCArtboard id="empty-failed" label="Failed generation" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.EmptyFailed /></Frame>
+        </DCArtboard>
+        <DCArtboard id="empty-keys" label="No API keys" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.EmptyAPIKeys /></Frame>
+        </DCArtboard>
+        <DCArtboard id="empty-int" label="Disconnected integrations" width={1280} height={820}>
+          <Frame w={1280} h={820}><window.EmptyIntegrations /></Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ------------- LOADING / AI THINKING ------------- */}
+      <DCSection id="loading" title="10 · Loading & AI thinking" subtitle="Streaming reasoning, progressive arch, live file gen.">
+        <DCArtboard id="ai-thinking" label="AI thinking · streaming" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.AIThinking /></Frame>
+        </DCArtboard>
+        <DCArtboard id="skel" label="Skeleton loading" width={1440} height={900}>
+          <Frame w={1440} h={900}><window.SkeletonLoading /></Frame>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+// Brand sheet — quick reference on tokens
+function BrandSheet() {
+  const Icons = window.Icons;
+  const swatches = [
+    { name: 'bg',         v: '#0A0A0B', tone: 'matte black' },
+    { name: 'bg-2',       v: '#0E0E10', tone: '' },
+    { name: 'surface',    v: '#121214', tone: '' },
+    { name: 'surface-2',  v: '#16161A', tone: '' },
+    { name: 'elevated',   v: '#1B1B20', tone: '' },
+  ];
+  const accents = [
+    { name: 'blue',    v: 'oklch(0.74 0.16 250)', tone: 'electric' },
+    { name: 'purple',  v: 'oklch(0.72 0.16 290)', tone: 'soft' },
+    { name: 'green',   v: 'oklch(0.78 0.18 145)', tone: 'terminal' },
+    { name: 'amber',   v: 'oklch(0.80 0.15 75)',  tone: 'caution' },
+    { name: 'red',     v: 'oklch(0.70 0.20 25)',  tone: 'error' },
+  ];
+
+  return (
+    <div className="sf-app" style={{ width: 1280, height: 760, padding: 40, background: 'var(--sf-bg)', overflow: 'hidden' }}>
+      <div className="sf-row" style={{ marginBottom: 26 }}>
+        <window.SFLogo />
+        <span className="sf-grow" />
+        <span className="sf-chip"><span className="sf-dot sf-dot--blue" /> Design system · v1.0</span>
+      </div>
+
+      <div className="sf-h1" style={{ fontSize: 32 }}>System reference</div>
+      <p className="sf-muted" style={{ fontSize: 14, margin: '6px 0 28px' }}>Tokens, type, and primitives used across the 10 screens.</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        {/* Surfaces */}
+        <div className="sf-card" style={{ padding: 20 }}>
+          <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Surfaces</div>
+          <div className="sf-col" style={{ gap: 6 }}>
+            {swatches.map(s => (
+              <div key={s.name} className="sf-row" style={{ gap: 12 }}>
+                <div style={{ width: 36, height: 24, borderRadius: 6, background: s.v, border: '1px solid var(--sf-border)' }} />
+                <span className="mono" style={{ fontSize: 12, color: 'var(--sf-text)', width: 80 }}>{s.name}</span>
+                <span className="mono sf-faint" style={{ fontSize: 11 }}>{s.v}</span>
+                <span className="sf-grow" />
+                <span className="sf-faint" style={{ fontSize: 11 }}>{s.tone}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Accents */}
+        <div className="sf-card" style={{ padding: 20 }}>
+          <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Accents — used sparingly</div>
+          <div className="sf-col" style={{ gap: 6 }}>
+            {accents.map(s => (
+              <div key={s.name} className="sf-row" style={{ gap: 12 }}>
+                <div style={{ width: 36, height: 24, borderRadius: 6, background: s.v, boxShadow: `0 0 12px ${s.v}66` }} />
+                <span className="mono" style={{ fontSize: 12, color: 'var(--sf-text)', width: 80 }}>{s.name}</span>
+                <span className="mono sf-faint" style={{ fontSize: 10.5 }}>{s.v}</span>
+                <span className="sf-grow" />
+                <span className="sf-faint" style={{ fontSize: 11 }}>{s.tone}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Type */}
+        <div className="sf-card" style={{ padding: 20, gridColumn: 'span 2' }}>
+          <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 18 }}>Typography</div>
+          <div className="sf-row" style={{ gap: 40, alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontSize: 38, fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1 }}>Inter Display</div>
+              <div className="sf-faint" style={{ fontSize: 11, marginTop: 6 }}>500 · -2.5% tracking · for headlines</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>Inter UI</div>
+              <div className="sf-faint" style={{ fontSize: 11, marginTop: 6 }}>14 / 13 / 12 px · UI text</div>
+            </div>
+            <div>
+              <div className="mono" style={{ fontSize: 16, color: 'var(--sf-text)' }}>JetBrains Mono</div>
+              <div className="sf-faint" style={{ fontSize: 11, marginTop: 6 }}>12 / 11 / 10.5 px · code, labels, chips</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Components */}
+        <div className="sf-card" style={{ padding: 20, gridColumn: 'span 2' }}>
+          <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 18 }}>Primitives</div>
+          <div className="sf-row" style={{ gap: 16, flexWrap: 'wrap' }}>
+            <button className="sf-btn sf-btn--primary">Primary</button>
+            <button className="sf-btn">Secondary</button>
+            <button className="sf-btn sf-btn--ghost">Ghost</button>
+            <button className="sf-btn sf-btn--sm">Small</button>
+            <button className="sf-btn sf-btn--lg sf-btn--primary"><Icons.Sparkle size={13} /> With icon</button>
+            <span className="sf-chip">Default</span>
+            <span className="sf-chip"><span className="sf-dot sf-dot--green" /> Status</span>
+            <span className="sf-chip sf-chip-mono">mono</span>
+            <input className="sf-input" placeholder="Input field" style={{ width: 180 }} />
+            <span className="sf-kbd">⌘K</span>
+            <span className="sf-kbd">esc</span>
+          </div>
+          <div className="sf-row" style={{ gap: 24, marginTop: 18 }}>
+            <window.MethodPill method="GET" />
+            <window.MethodPill method="POST" />
+            <window.MethodPill method="PATCH" />
+            <window.MethodPill method="DELETE" />
+            <span className="sf-grow" />
+            <span className="mono sf-faint" style={{ fontSize: 11 }}>
+              radius xs 6 · sm 8 · md 12 · lg 16 · xl 20
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
