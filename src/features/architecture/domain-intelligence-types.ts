@@ -33,6 +33,52 @@ export enum EvidenceClass {
   DOCUMENTATION = "DOCUMENTATION"
 }
 
+export enum EvidenceQuality {
+  STRUCTURAL = "STRUCTURAL",
+  DECLARATIVE = "DECLARATIVE",
+  BEHAVIORAL = "BEHAVIORAL",
+  DOCUMENTATION = "DOCUMENTATION"
+}
+
+export function getEvidenceQuality(className: EvidenceClass, sourceType?: string): EvidenceQuality {
+  if (
+    className === EvidenceClass.SCHEMA ||
+    className === EvidenceClass.DATABASE ||
+    className === EvidenceClass.API ||
+    className === EvidenceClass.ROUTE
+  ) {
+    return EvidenceQuality.STRUCTURAL;
+  }
+  if (
+    className === EvidenceClass.CONFIG ||
+    className === EvidenceClass.DEPENDENCY ||
+    className === EvidenceClass.TEST
+  ) {
+    return EvidenceQuality.DECLARATIVE;
+  }
+  if (
+    className === EvidenceClass.FORM ||
+    className === EvidenceClass.STATE ||
+    className === EvidenceClass.SOURCE_CODE
+  ) {
+    return EvidenceQuality.BEHAVIORAL;
+  }
+  if (className === EvidenceClass.DOCUMENTATION) {
+    return EvidenceQuality.DOCUMENTATION;
+  }
+
+  if (sourceType === "schema" || sourceType === "database" || sourceType === "api_call" || sourceType === "route") {
+    return EvidenceQuality.STRUCTURAL;
+  }
+  if (sourceType === "config" || sourceType === "dependency") {
+    return EvidenceQuality.DECLARATIVE;
+  }
+  if (sourceType === "form" || sourceType === "state" || sourceType === "component") {
+    return EvidenceQuality.BEHAVIORAL;
+  }
+  return EvidenceQuality.DOCUMENTATION;
+}
+
 export interface StructuredEvidence {
   className: EvidenceClass;
   sourceType: "route" | "component" | "page" | "api_call" | "form" | "state" | "documentation" | "dependency" | "config" | "database" | "schema";
@@ -41,10 +87,12 @@ export interface StructuredEvidence {
   confidence: number;
   filePath?: string;
   reasoning: string;
+  quality?: EvidenceQuality;
 }
 
 export interface DomainEntity {
   name: string;
+  normalizedId?: string;
   table: string;
   type: SemanticType.ENTITY | SemanticType.AGGREGATE_ROOT | SemanticType.REFERENCE_ENTITY | SemanticType.PERSISTENT_ENTITY;
   description: string;
@@ -96,6 +144,7 @@ export interface DomainPermission {
 
 export interface DomainWorkflow {
   name: string;
+  normalizedId?: string;
   type: SemanticType.WORKFLOW | SemanticType.COMMAND;
   description: string;
   steps: string[];
@@ -107,6 +156,7 @@ export interface DomainWorkflow {
 
 export interface BoundedContext {
   name: string;
+  normalizedId?: string;
   description: string;
   entities: string[];
   services: string[];
@@ -163,6 +213,7 @@ export enum CapabilityCategory {
 export interface BusinessCapability {
   id: string;
   name: string;
+  normalizedId?: string;
   description: string;
   category: CapabilityCategory;
   evidence: StructuredEvidence[];

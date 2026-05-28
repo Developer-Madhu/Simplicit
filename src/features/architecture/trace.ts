@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-
 export interface EntityTrace {
   entity: string;
   stage: string;
@@ -11,13 +8,38 @@ export interface EntityTrace {
   timestamp: string;
 }
 
-const REPORT_PATH = path.resolve(process.cwd(), "entity-trace-report.json");
+const getFs = () => {
+  if (typeof window === "undefined") {
+    try {
+      return eval('require("fs")');
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const getPath = () => {
+  if (typeof window === "undefined") {
+    try {
+      return eval('require("path")');
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
 
 /**
  * Reset the trace report file
  */
 export function resetTraceReport(): void {
+  const fs = getFs();
+  const path = getPath();
+  if (!fs || !path) return;
+
   try {
+    const REPORT_PATH = path.resolve(process.cwd(), "entity-trace-report.json");
     fs.writeFileSync(REPORT_PATH, JSON.stringify([], null, 2), "utf-8");
   } catch (err) {
     console.error("Failed to reset trace report:", err);
@@ -37,7 +59,12 @@ export function traceEntity(
     rejectionReason: string;
   }
 ): void {
+  const fs = getFs();
+  const path = getPath();
+  if (!fs || !path) return;
+
   try {
+    const REPORT_PATH = path.resolve(process.cwd(), "entity-trace-report.json");
     let traces: EntityTrace[] = [];
     if (fs.existsSync(REPORT_PATH)) {
       try {

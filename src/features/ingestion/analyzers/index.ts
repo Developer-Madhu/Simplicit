@@ -47,7 +47,12 @@ export async function analyzeProject(
   
   if (contextFile) {
     log(`Authoritative specification found: ${contextFile}.`);
-    simplicitContext = parseSimplicitContext(rawFiles.get(contextFile)!);
+    const parsed = parseSimplicitContext(rawFiles.get(contextFile)!);
+    if (!parsed.validation.isValid && parsed.validation.errors.some(e => e.includes("schema version"))) {
+      log(`Ingestion Blocked: ${parsed.validation.errors.join(", ")}`);
+      throw new Error(`Ingestion Blocked: ${parsed.validation.errors.join(", ")}`);
+    }
+    simplicitContext = parsed;
     log(`Context intelligence reconstructed: ${simplicitContext.metrics.entityCount} entities, ${simplicitContext.metrics.workflowCount} workflows.`);
   }
 
@@ -223,6 +228,28 @@ export async function analyzeProject(
   const semanticGraph = buildSemanticGraph(routes, entities, featureModules, apiExpectations, roles, workflows);
   const summary = generateArchitecturalSummary(metadata.appType, featureModules, entities, framework, roles, workflows, crudSystems);
   
+  // Assign normalizedId to all metadata collections
+  const getNormalizedId = (name: string): string => {
+    let id = name.toLowerCase().trim();
+    if (id.endsWith("s") && !id.endsWith("ss")) {
+      id = id.slice(0, -1);
+    }
+    return id.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  };
+
+  entities.forEach(e => e.normalizedId = getNormalizedId(e.name));
+  workflows.forEach(w => w.normalizedId = getNormalizedId(w.name));
+  roles.forEach(r => r.normalizedId = getNormalizedId(r.name));
+  featureModules.forEach(m => m.normalizedId = getNormalizedId(m.name));
+  apiExpectations.forEach(ae => ae.normalizedId = getNormalizedId(`${ae.method}-${ae.path}`));
+
+  // Deterministic sorting before serialization (Required Addition 6)
+  entities.sort((a, b) => a.name.localeCompare(b.name));
+  workflows.sort((a, b) => a.name.localeCompare(b.name));
+  featureModules.sort((a, b) => a.name.localeCompare(b.name));
+  apiExpectations.sort((a, b) => `${a.path}-${a.method}`.localeCompare(`${b.path}-${b.method}`));
+  roles.sort((a, b) => a.name.localeCompare(b.name));
+
   metadata.architecturalSummary = summary;
   metadata.featureModules = featureModules;
   metadata.roles = roles;

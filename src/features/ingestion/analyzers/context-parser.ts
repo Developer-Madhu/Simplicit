@@ -14,7 +14,9 @@ import type {
   ContextAuthModel,
   ProjectMetadata,
   RouteCategory,
-  ConfidenceLevel
+  ConfidenceLevel,
+  ContextRelationship,
+  ContextCapability
 } from "../types";
 
 /**
@@ -22,21 +24,210 @@ import type {
  * Build deterministic parsers for markdown sections.
  */
 export function parseSimplicitContext(markdown: string): SimplicitContext {
-  const sections = splitIntoSections(markdown);
-  
-  const overview = parseOverview(sections.get("Project Overview") || "");
-  const frontendStack = parseFrontendStack(sections.get("Frontend Stack") || "");
-  const auth = parseAuth(sections.get("Authentication Flow") || "");
-  const businessRules = parseBusinessRules(sections.get("Business Rules") || "");
-  const validationRules = parseValidationRules(sections.get("Validation Rules") || "");
-  const userJourneys = parseUserJourneys(sections.get("User Journeys") || "");
-  const workflows = parseWorkflows(sections.get("Workflows") || "", userJourneys);
-  const roles = parseRoles(sections.get("User Roles and Permissions") || "", sections.get("Project Overview") || "");
-  const endpoints = parseEndpoints(sections.get("API Endpoints") || "", sections.get("Route Structure") || "");
-  const dataModels = parseDataModels(sections.get("Data Models") || "", sections.get("Entities") || "");
-  
-  const integrations = parseIntegrations(sections.get("Third-Party Integrations") || "");
-  const infrastructure = parseInfrastructure(sections.get("Infrastructure") || "", integrations);
+  // 1. Parse frontmatter metadata
+  const metadata: { version?: string; tool?: string; schema?: string; promptHash?: string } = {};
+  const fmMatch = markdown.match(/^---\r?\n([\s\S]+?)\r?\n---\r?\n([\s\S]*)$/);
+  let contentMarkdown = markdown;
+  if (fmMatch) {
+    contentMarkdown = fmMatch[2];
+    const fmText = fmMatch[1];
+    const lines = fmText.split("\n");
+    for (const line of lines) {
+      const parts = line.split(":");
+      if (parts.length >= 2) {
+        const key = parts[0].trim().toLowerCase();
+        const val = parts.slice(1).join(":").trim();
+        if (key === "version") metadata.version = val;
+        else if (key === "tool") metadata.tool = val;
+        else if (key === "schema") metadata.schema = val;
+        else if (key === "prompthash") metadata.promptHash = val;
+      }
+    }
+  }
+
+  // 2. Strict Schema Check
+  const SUPPORTED_SCHEMAS = ["simplicit-context-v2"];
+  const hasSupportedSchema = metadata.schema && SUPPORTED_SCHEMAS.includes(metadata.schema);
+
+  if (!hasSupportedSchema) {
+    return {
+      overview: { name: "", purpose: "", category: "unknown", description: "", goals: [] },
+      frontendStack: { framework: "Unknown", bundler: "Unknown", runtime: "Node.js", language: "JavaScript", uiLibraries: [], routingLibraries: [], stateLibraries: [], animationLibraries: [] },
+      auth: { provider: "Custom", loginMethods: [], roleModel: "RBAC", visibilityRules: [] },
+      businessRules: [],
+      validationRules: [],
+      userJourneys: [],
+      workflows: [],
+      roles: [],
+      endpoints: [],
+      dataModels: [],
+      relationships: [],
+      capabilities: [],
+      entitiesConfidence: "UNKNOWN",
+      relationshipsConfidence: "UNKNOWN",
+      infrastructureConfidence: "UNKNOWN",
+      metadata,
+      envVars: [],
+      fileUploads: "",
+      realtime: "",
+      integrations: [],
+      infrastructure: { database: "UNKNOWN", caching: "None", storage: "None", compute: "Managed", services: [] },
+      errorFormat: "",
+      rawMarkdown: markdown,
+      metrics: { routeCount: 0, pageCount: 0, protectedRouteCount: 0, publicRouteCount: 0, entityCount: 0, workflowCount: 0, integrationCount: 0 },
+      validation: {
+        isValid: false,
+        errors: [`Unsupported schema version: ${metadata.schema || "none"}. Ingestion blocked.`],
+        warnings: []
+      }
+    };
+  }
+
+  const sections = splitIntoSections(contentMarkdown);
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Required sections presence validation (emit warnings, do not fail)
+  if (!sections.has("DOMAIN")) warnings.push("Missing required section: DOMAIN");
+  if (!sections.has("ENTITIES")) warnings.push("Missing required section: ENTITIES");
+  if (!sections.has("RELATIONSHIPS")) warnings.push("Missing required section: RELATIONSHIPS");
+  if (!sections.has("CAPABILITIES")) warnings.push("Missing required section: CAPABILITIES");
+  if (!sections.has("INFRASTRUCTURE")) warnings.push("Missing required section: INFRASTRUCTURE");
+
+  // Parser Recovery Mode: Wrap each section in a try/catch
+  let overview: ContextProjectOverview = { name: "", purpose: "", category: "unknown", description: "", goals: [] };
+  try {
+    overview = parseOverview(sections.get("DOMAIN") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse DOMAIN section: ${err.message}`);
+  }
+
+  let frontendStack: ContextFrontendStack = { framework: "Unknown", bundler: "Unknown", runtime: "Node.js", language: "JavaScript", uiLibraries: [], routingLibraries: [], stateLibraries: [], animationLibraries: [] };
+  try {
+    frontendStack = parseFrontendStack(sections.get("Frontend Stack") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse Frontend Stack section: ${err.message}`);
+  }
+
+  let auth: ContextAuthModel = { provider: "Custom", loginMethods: [], roleModel: "RBAC", visibilityRules: [] };
+  try {
+    auth = parseAuth(sections.get("Authentication Flow") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse Authentication Flow section: ${err.message}`);
+  }
+
+  let businessRules: any[] = [];
+  try {
+    businessRules = parseBusinessRules(sections.get("Business Rules") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse Business Rules section: ${err.message}`);
+  }
+
+  let validationRules: any[] = [];
+  try {
+    validationRules = parseValidationRules(sections.get("VALIDATION RULES") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse VALIDATION RULES section: ${err.message}`);
+  }
+
+  let userJourneys: any[] = [];
+  try {
+    userJourneys = parseUserJourneys(sections.get("User Journeys") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse User Journeys section: ${err.message}`);
+  }
+
+  let workflows: any[] = [];
+  try {
+    workflows = parseWorkflows(sections.get("BUSINESS WORKFLOWS") || "", userJourneys);
+  } catch (err: any) {
+    warnings.push(`Failed to parse BUSINESS WORKFLOWS section: ${err.message}`);
+  }
+
+  let roles: any[] = [];
+  try {
+    roles = parseRoles(sections.get("ROLES") || "", sections.get("DOMAIN") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse ROLES section: ${err.message}`);
+  }
+
+  let endpoints: any[] = [];
+  try {
+    endpoints = parseEndpoints(sections.get("API SURFACE") || "", sections.get("Route Structure") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse API SURFACE section: ${err.message}`);
+  }
+
+  let dataModels: any[] = [];
+  try {
+    dataModels = parseDataModels(sections.get("Data Models") || "", sections.get("ENTITIES") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse ENTITIES section: ${err.message}`);
+  }
+
+  let relationships: any[] = [];
+  try {
+    relationships = parseRelationships(sections.get("RELATIONSHIPS") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse RELATIONSHIPS section: ${err.message}`);
+  }
+
+  let capabilities: any[] = [];
+  try {
+    capabilities = parseCapabilities(sections.get("CAPABILITIES") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse CAPABILITIES section: ${err.message}`);
+  }
+
+  let envVars: string[] = [];
+  try {
+    envVars = parseList(sections.get("Environment Variables Required") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse Environment Variables Required: ${err.message}`);
+  }
+
+  const fileUploads = sections.get("File Upload Requirements") || "";
+  const realtime = sections.get("Real-time Requirements") || "";
+
+  let integrations: any[] = [];
+  try {
+    integrations = parseIntegrations(sections.get("INTEGRATIONS") || "");
+  } catch (err: any) {
+    warnings.push(`Failed to parse INTEGRATIONS section: ${err.message}`);
+  }
+
+  let infrastructure: ContextInfrastructure = { database: "UNKNOWN", caching: "None", storage: "None", compute: "Managed", services: [] };
+  try {
+    infrastructure = parseInfrastructure(sections.get("INFRASTRUCTURE") || "", integrations);
+  } catch (err: any) {
+    warnings.push(`Failed to parse INFRASTRUCTURE section: ${err.message}`);
+  }
+
+  const errorFormat = sections.get("Error Response Format") || "";
+
+  // Assign Normalized IDs
+  dataModels.forEach(m => m.normalizedId = getNormalizedId(m.name));
+  endpoints.forEach(e => e.normalizedId = getNormalizedId(`${e.method}-${e.path}`));
+  workflows.forEach(w => w.normalizedId = getNormalizedId(w.name));
+  roles.forEach(r => r.normalizedId = getNormalizedId(r.name));
+  integrations.forEach(i => i.normalizedId = getNormalizedId(i.name));
+  relationships.forEach(r => r.normalizedId = getNormalizedId(`${r.source}-${r.target}`));
+  capabilities.forEach(c => c.normalizedId = getNormalizedId(c.name));
+
+  // Determine Section Confidence
+  const entitiesConfidence = parseSectionConfidence(sections.get("ENTITIES") || "");
+  const relationshipsConfidence = parseSectionConfidence(sections.get("RELATIONSHIPS") || "");
+  let infrastructureConfidence = parseSectionConfidence(sections.get("INFRASTRUCTURE") || "");
+  if (infrastructureConfidence === "UNKNOWN" && (sections.get("INFRASTRUCTURE") || "").trim() !== "") {
+    infrastructureConfidence = "HIGH";
+  }
+
+  // Deterministic Ordering
+  dataModels.sort((a, b) => a.name.localeCompare(b.name));
+  relationships.sort((a, b) => `${a.source}-${a.target}`.localeCompare(`${b.source}-${b.target}`));
+  capabilities.sort((a, b) => a.name.localeCompare(b.name));
+  workflows.sort((a, b) => a.name.localeCompare(b.name));
+  endpoints.sort((a, b) => `${a.path}-${a.method}`.localeCompare(`${b.path}-${b.method}`));
 
   const metrics = {
     routeCount: endpoints.length,
@@ -47,7 +238,7 @@ export function parseSimplicitContext(markdown: string): SimplicitContext {
     workflowCount: workflows.length,
     integrationCount: integrations.length
   };
-  
+
   const ctx: SimplicitContext = {
     overview,
     frontendStack,
@@ -59,22 +250,38 @@ export function parseSimplicitContext(markdown: string): SimplicitContext {
     roles,
     endpoints,
     dataModels,
-    envVars: parseList(sections.get("Environment Variables Required") || ""),
-    fileUploads: sections.get("File Upload Requirements") || "",
-    realtime: sections.get("Real-time Requirements") || "",
+    relationships,
+    capabilities,
+    entitiesConfidence,
+    relationshipsConfidence,
+    infrastructureConfidence,
+    metadata,
+    envVars,
+    fileUploads,
+    realtime,
     integrations,
     infrastructure,
-    errorFormat: sections.get("Error Response Format") || "",
+    errorFormat,
     rawMarkdown: markdown,
     metrics,
     validation: {
       isValid: true,
-      errors: [],
-      warnings: [],
+      errors,
+      warnings
     }
   };
 
-  validateContext(ctx);
+  // Run final consistency checks to populate warnings
+  try {
+    validateContext(ctx);
+  } catch (err: any) {
+    ctx.validation.errors.push(`Validation exception: ${err.message}`);
+    ctx.validation.isValid = false;
+  }
+
+  // Merge parser warning arrays
+  ctx.validation.warnings = Array.from(new Set([...ctx.validation.warnings, ...warnings]));
+
   return ctx;
 }
 
@@ -85,7 +292,7 @@ function splitIntoSections(markdown: string): Map<string, string> {
   let currentContent: string[] = [];
 
   for (const line of lines) {
-    const headerMatch = line.match(/^#+\s+(.*)/);
+    const headerMatch = line.match(/^#{1,2}\s+(.*)/);
     if (headerMatch) {
       if (currentHeader) {
         sections.set(normalizeHeader(currentHeader), currentContent.join("\n").trim());
@@ -105,39 +312,65 @@ function splitIntoSections(markdown: string): Map<string, string> {
 }
 
 function normalizeHeader(header: string): string {
-  const h = header.toLowerCase();
-  if (h.includes("overview")) return "Project Overview";
+  const h = header.toLowerCase().trim();
+  if (h === "domain" || h === "project overview") return "DOMAIN";
+  if (h === "entities" || h === "data models" || h === "schema") return "ENTITIES";
+  if (h === "relationships") return "RELATIONSHIPS";
+  if (h === "capabilities") return "CAPABILITIES";
+  if (h === "roles" || h === "user roles and permissions") return "ROLES";
+  if (h === "permissions") return "PERMISSIONS";
+  if (h === "infrastructure" || h === "cloud") return "INFRASTRUCTURE";
+  if (h === "integrations" || h === "third-party integrations") return "INTEGRATIONS";
+  if (h === "business workflows" || h === "workflows" || h === "logical flows") return "BUSINESS WORKFLOWS";
+  if (h === "validation rules") return "VALIDATION RULES";
+  if (h === "storage objects") return "STORAGE OBJECTS";
+  if (h === "api surface" || h === "api endpoints" || h === "api definition") return "API SURFACE";
+  if (h === "open questions") return "OPEN QUESTIONS";
+  
+  // Older fallbacks
+  if (h.includes("overview")) return "DOMAIN";
   if (h.includes("frontend") || h.includes("ui stack") || h.includes("tech stack")) return "Frontend Stack";
   if (h.includes("business rules")) return "Business Rules";
-  if (h.includes("validation rules")) return "Validation Rules";
+  if (h.includes("validation rules")) return "VALIDATION RULES";
   if (h.includes("user journeys")) return "User Journeys";
-  if (h.includes("workflows") || h.includes("logical flows")) return "Workflows";
-  if (h.includes("roles") || h.includes("permissions")) return "User Roles and Permissions";
-  if (h.includes("endpoints") || h.includes("api definition")) return "API Endpoints";
   if (h.includes("route structure") || h.includes("page map") || h.includes("navigation")) return "Route Structure";
-  if (h.includes("data models") || h.includes("entities") || h.includes("schema")) return "Data Models";
   if (h.includes("authentication")) return "Authentication Flow";
   if (h.includes("environment variables")) return "Environment Variables Required";
   if (h.includes("file upload")) return "File Upload Requirements";
   if (h.includes("real-time") || h.includes("websocket")) return "Real-time Requirements";
-  if (h.includes("integrations")) return "Third-Party Integrations";
-  if (h.includes("infrastructure") || h.includes("cloud")) return "Infrastructure";
   if (h.includes("error response")) return "Error Response Format";
+  
   return header;
 }
 
 function parseOverview(content: string): ContextProjectOverview {
-  const lines = content.split("\n");
-  const name = lines[0]?.trim() || "";
-  const description = lines.find(l => !l.startsWith("-") && l.trim() !== "" && l !== name)?.trim() || "";
-  const goals = lines.filter(l => l.startsWith("-")).map(l => l.slice(1).trim());
-
-  let purpose = description;
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+  let name = "";
+  let purpose = "";
   let category = "Web Application";
+  let description = "";
+  const goals: string[] = [];
 
-  if (name.toLowerCase().includes("analyzer") || description.toLowerCase().includes("analyzer")) category = "Analytical Platform";
-  if (name.toLowerCase().includes("exam") || description.toLowerCase().includes("exam")) category = "Examination System";
-  if (name.toLowerCase().includes("platform") || description.toLowerCase().includes("platform")) category = "SaaS Platform";
+  for (const line of lines) {
+    if (line.match(/^name\s*:/i)) {
+      name = line.split(":")[1]?.trim() || "";
+    } else if (line.match(/^category\s*:/i)) {
+      category = line.split(":")[1]?.trim() || "Web Application";
+    } else if (line.match(/^description\s*:/i)) {
+      description = line.split(":")[1]?.trim() || "";
+    } else if (line.startsWith("-") || line.startsWith("*")) {
+      goals.push(line.slice(1).trim());
+    } else if (!name && !line.includes(":")) {
+      name = line;
+    } else if (!description && !line.includes(":")) {
+      description = line;
+    }
+  }
+
+  purpose = description;
+  if (category.toUpperCase() === "UNKNOWN") {
+    category = "unknown";
+  }
 
   return { name, purpose, category, description, goals };
 }
@@ -394,19 +627,111 @@ function parseDataModels(content: string, entityContent: string): ContextDataMod
   const models: Map<string, ContextDataModel> = new Map();
   const allContent = content + "\n" + entityContent;
   
-  // Strategy 1: Header-based entities (### Profiles)
-  const parts = allContent.split(/^###?\s+/m);
+  // Strategy 1: Header-based entities (### Entity: Profiles)
+  const parts = allContent.split(/^###?\s*(?:Entity:\s*)?/im);
   for (const part of parts) {
     if (!part.trim()) continue;
     const lines = part.split("\n");
-    const name = lines[0].trim();
-    if (!name || name.startsWith("-") || name.startsWith("*") || name.length > 30) continue;
+    const headerLine = lines[0].trim();
+    if (!headerLine || headerLine.startsWith("-") || headerLine.startsWith("*") || headerLine.length > 30) continue;
     
-    const fields = lines.filter(l => l.match(/^[-\s*]+/)).map(l => l.replace(/^[-\s*]+/, "").trim());
-    const relations = lines.filter(l => l.includes("->") || l.includes("references")).map(l => l.trim());
-    
-    if (fields.length > 0) {
-      models.set(name.toLowerCase(), { name, fields, relations });
+    if (headerLine.toUpperCase() === "UNKNOWN") continue;
+
+    const name = headerLine;
+    const fields: string[] = [];
+    const relations: string[] = [];
+    const evidence: string[] = [];
+    const capabilities: string[] = [];
+    const lifecycle: string[] = [];
+    const businessRules: string[] = [];
+    let type = "";
+    let description = "";
+    let confidence = "";
+
+    let currentSection = "";
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const lowerLine = line.toLowerCase();
+
+      // Check key-value fields
+      if (line.match(/^type\s*:/i)) {
+        type = line.split(":")[1]?.trim() || "";
+        currentSection = "";
+        continue;
+      }
+      if (line.match(/^description\s*:/i)) {
+        description = line.split(":")[1]?.trim() || "";
+        currentSection = "";
+        continue;
+      }
+      if (line.match(/^confidence\s*:/i)) {
+        confidence = line.split(":")[1]?.trim() || "";
+        currentSection = "";
+        continue;
+      }
+
+      // Check lists headers
+      if (lowerLine.startsWith("fields:")) {
+        currentSection = "fields";
+        continue;
+      }
+      if (lowerLine.startsWith("relationships:")) {
+        currentSection = "relations";
+        continue;
+      }
+      if (lowerLine.startsWith("evidence:")) {
+        currentSection = "evidence";
+        continue;
+      }
+      if (lowerLine.startsWith("capabilities:")) {
+        currentSection = "capabilities";
+        continue;
+      }
+      if (lowerLine.startsWith("lifecycle:")) {
+        currentSection = "lifecycle";
+        continue;
+      }
+      if (lowerLine.startsWith("business rules:")) {
+        currentSection = "rules";
+        continue;
+      }
+
+      // Check list items
+      if (line.startsWith("*") || line.startsWith("-")) {
+        const val = line.slice(1).trim();
+        if (val.toUpperCase() === "UNKNOWN") continue;
+        if (currentSection === "fields") {
+          fields.push(val);
+        } else if (currentSection === "relations") {
+          relations.push(val);
+        } else if (currentSection === "evidence") {
+          evidence.push(val);
+        } else if (currentSection === "capabilities") {
+          capabilities.push(val);
+        } else if (currentSection === "lifecycle") {
+          lifecycle.push(val);
+        } else if (currentSection === "rules") {
+          businessRules.push(val);
+        }
+      }
+    }
+
+    if (fields.length > 0 || relations.length > 0 || description || capabilities.length > 0) {
+      models.set(name.toLowerCase(), {
+        name,
+        fields,
+        relations,
+        evidence: evidence.length > 0 ? evidence : undefined,
+        capabilities: capabilities.length > 0 ? capabilities : undefined,
+        lifecycle: lifecycle.length > 0 ? lifecycle : undefined,
+        confidence: confidence || undefined,
+        type: type || undefined,
+        description: description || undefined,
+        businessRules: businessRules.length > 0 ? businessRules : undefined,
+      });
     }
   }
 
@@ -416,9 +741,10 @@ function parseDataModels(content: string, entityContent: string): ContextDataMod
     const match = line.match(/^[-\s*]*\*\*(.*?)\*\*[:\s]*(.*)/);
     if (match) {
       const name = match[1].trim();
+      if (name.toUpperCase() === "UNKNOWN") continue;
       if (name.length < 30 && !models.has(name.toLowerCase())) {
         const rest = match[2].trim();
-        const fields = rest ? rest.split(",").map(f => f.trim()) : [];
+        const fields = rest && rest.toUpperCase() !== "UNKNOWN" ? rest.split(",").map(f => f.trim()) : [];
         models.set(name.toLowerCase(), { name, fields, relations: [] });
       }
     } else {
@@ -426,6 +752,7 @@ function parseDataModels(content: string, entityContent: string): ContextDataMod
        const listMatch = line.match(/^[-\s*]+([a-z_]{3,20})$/i);
        if (listMatch) {
           const name = listMatch[1].trim();
+          if (name.toUpperCase() === "UNKNOWN") continue;
           if (!models.has(name.toLowerCase())) {
              models.set(name.toLowerCase(), { name, fields: [], relations: [] });
           }
@@ -503,7 +830,25 @@ function validateContext(ctx: SimplicitContext) {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Required sections
+  // Required sections presence validation (strict warnings, no silent acceptance)
+  const markdown = ctx.rawMarkdown || "";
+  if (!/##\s+DOMAIN/i.test(markdown)) {
+    warnings.push("Missing required section: DOMAIN");
+  }
+  if (!/##\s+ENTITIES/i.test(markdown)) {
+    warnings.push("Missing required section: ENTITIES");
+  }
+  if (!/##\s+RELATIONSHIPS/i.test(markdown)) {
+    warnings.push("Missing required section: RELATIONSHIPS");
+  }
+  if (!/##\s+CAPABILITIES/i.test(markdown)) {
+    warnings.push("Missing required section: CAPABILITIES");
+  }
+  if (!/##\s+INFRASTRUCTURE/i.test(markdown)) {
+    warnings.push("Missing required section: INFRASTRUCTURE");
+  }
+
+  // Required DOMAIN elements
   if (!ctx.overview.name || !ctx.overview.description) {
     errors.push("Project Overview section is incomplete.");
   }
@@ -609,4 +954,143 @@ export function generateClarificationQuestions(ctx: SimplicitContext): string[] 
   }
 
   return questions;
+}
+
+function parseRelationships(content: string): ContextRelationship[] {
+  const relationships: ContextRelationship[] = [];
+  const parts = content.split(/^###?\s*(?:Relationship)?/im);
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    const lines = part.split("\n");
+    
+    let source = "";
+    let target = "";
+    let type = "";
+    const evidence: string[] = [];
+    let confidence = "";
+    let currentSection = "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const lowerLine = trimmed.toLowerCase();
+
+      if (trimmed.startsWith("Source:")) {
+        source = trimmed.replace("Source:", "").replace(/[<>]/g, "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Target:")) {
+        target = trimmed.replace("Target:", "").replace(/[<>]/g, "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Type:")) {
+        type = trimmed.replace("Type:", "").replace(/[<>]/g, "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Confidence:")) {
+        confidence = trimmed.replace("Confidence:", "").trim();
+        currentSection = "";
+      } else if (lowerLine.startsWith("evidence:")) {
+        currentSection = "evidence";
+      } else if (trimmed.startsWith("*") || trimmed.startsWith("-")) {
+        const val = trimmed.slice(1).trim();
+        if (val.toUpperCase() === "UNKNOWN") continue;
+        if (currentSection === "evidence") {
+          evidence.push(val);
+        }
+      }
+    }
+
+    if (source && target) {
+      relationships.push({
+        source,
+        target,
+        type,
+        evidence,
+        confidence
+      });
+    }
+  }
+
+  return relationships;
+}
+
+function parseCapabilities(content: string): ContextCapability[] {
+  const capabilities: ContextCapability[] = [];
+  const parts = content.split(/^###?\s*(?:Capability)?/im);
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    const lines = part.split("\n");
+
+    let name = "";
+    let entity = "";
+    let category = "";
+    const evidence: string[] = [];
+    const validationRules: string[] = [];
+    const permissions: string[] = [];
+    let confidence = "";
+    let currentSection = "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const lowerLine = trimmed.toLowerCase();
+
+      if (trimmed.startsWith("Name:")) {
+        name = trimmed.replace("Name:", "").replace(/[<>]/g, "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Entity:")) {
+        entity = trimmed.replace("Entity:", "").replace(/[<>]/g, "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Category:")) {
+        category = trimmed.replace("Category:", "").trim();
+        currentSection = "";
+      } else if (trimmed.startsWith("Confidence:")) {
+        confidence = trimmed.replace("Confidence:", "").trim();
+        currentSection = "";
+      } else if (lowerLine.startsWith("evidence:")) {
+        currentSection = "evidence";
+      } else if (lowerLine.startsWith("validation rules:")) {
+        currentSection = "validationRules";
+      } else if (lowerLine.startsWith("permissions:")) {
+        currentSection = "permissions";
+      } else if (trimmed.startsWith("*") || trimmed.startsWith("-")) {
+        const val = trimmed.slice(1).trim();
+        if (val.toUpperCase() === "UNKNOWN") continue;
+        if (currentSection === "evidence") {
+          evidence.push(val);
+        } else if (currentSection === "validationRules") {
+          validationRules.push(val);
+        } else if (currentSection === "permissions") {
+          permissions.push(val);
+        }
+      }
+    }
+
+    if (name) {
+      capabilities.push({
+        name,
+        entity,
+        category,
+        evidence,
+        validationRules: validationRules.length > 0 ? validationRules : undefined,
+        permissions: permissions.length > 0 ? permissions : undefined,
+        confidence
+      });
+    }
+  }
+
+  return capabilities;
+}
+
+function getNormalizedId(name: string): string {
+  let id = name.toLowerCase().trim();
+  if (id.endsWith("s") && !id.endsWith("ss")) {
+    id = id.slice(0, -1);
+  }
+  return id.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function parseSectionConfidence(sectionText: string): string {
+  const match = sectionText.match(/confidence\s*:\s*(high|medium|low|unknown)/i);
+  return match ? match[1].toUpperCase() : "UNKNOWN";
 }

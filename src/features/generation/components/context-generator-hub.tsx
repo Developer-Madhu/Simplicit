@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { 
   ChevronRight, Copy, Check, Star, 
   Info, ArrowRight, Code2, Terminal,
@@ -8,6 +8,7 @@ import {
   Wand2, Globe, Command, X
 } from "lucide-react";
 import { CONTEXT_TOOLS, ContextTool } from "../lib/context-tools";
+import { getSystemPrompt } from "../../prompts/prompt-loader";
 
 interface ContextGeneratorHubProps {
   onClose?: () => void;
@@ -111,13 +112,40 @@ export function ContextGeneratorHub() {
 }
 
 function ContextToolDetail({ tool, onClose }: { tool: ContextTool; onClose: () => void }) {
+  const [prompt, setPrompt] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setSetCopied] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    getSystemPrompt(tool.id)
+      .then((p) => {
+        if (active) {
+          setPrompt(p);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message || "Failed to load system prompt.");
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [tool.id]);
+
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(tool.promptTemplate);
-    setSetCopied(true);
-    setTimeout(() => setSetCopied(false), 2000);
-  }, [tool]);
+    if (prompt) {
+      navigator.clipboard.writeText(prompt.raw);
+      setSetCopied(true);
+      setTimeout(() => setSetCopied(false), 2000);
+    }
+  }, [prompt]);
 
   return (
     <>
@@ -205,24 +233,66 @@ function ContextToolDetail({ tool, onClose }: { tool: ContextTool; onClose: () =
               <span className="mono" style={{ fontSize: 10, color: 'var(--sf-text-faint)', textTransform: 'uppercase' }}>Prompt Template</span>
               <button 
                 onClick={handleCopy}
+                disabled={loading || !!error}
                 className={`sf-btn sf-btn--sm ${copied ? 'sf-btn--ghost' : 'sf-btn--primary'}`}
                 style={{ height: 26, fontSize: 11 }}
               >
                 {copied ? <><Check size={11} style={{ marginRight: 4 }} /> Copied</> : <><Copy size={11} style={{ marginRight: 4 }} /> Copy Prompt</>}
               </button>
             </div>
-            <pre 
-              style={{
-                padding: '14px 16px', background: 'var(--sf-bg)', 
-                border: '1px solid var(--sf-border-strong)', borderRadius: 10,
-                fontSize: 12, lineHeight: 1.6, color: 'var(--sf-text-muted)',
-                whiteSpace: 'pre-wrap', fontFamily: 'var(--sf-font-mono)',
-                maxHeight: 240, overflowY: 'auto', margin: 0
-              }}
-            >
-              {tool.promptTemplate}
-            </pre>
+            {loading ? (
+              <div className="sf-row" style={{ justifyContent: 'center', padding: 24, color: 'var(--sf-text-muted)' }}>
+                <span>Loading prompt template...</span>
+              </div>
+            ) : error ? (
+              <div className="sf-row" style={{ padding: '14px 16px', background: 'rgba(239, 68, 68, 0.1)', color: 'rgb(239, 68, 68)', borderRadius: 10, fontSize: 12 }}>
+                <span>Error: {error}</span>
+              </div>
+            ) : (
+              <pre 
+                style={{
+                  padding: '14px 16px', background: 'var(--sf-bg)', 
+                  border: '1px solid var(--sf-border-strong)', borderRadius: 10,
+                  fontSize: 12, lineHeight: 1.6, color: 'var(--sf-text-muted)',
+                  whiteSpace: 'pre-wrap', fontFamily: 'var(--sf-font-mono)',
+                  maxHeight: 240, overflowY: 'auto', margin: 0
+                }}
+              >
+                {prompt?.raw}
+              </pre>
+            )}
           </div>
+
+          {/* Debug Panel */}
+          {!loading && !error && prompt && (
+            <div className="sf-col" style={{ borderTop: '1px solid var(--sf-border)', paddingTop: 16, gap: 8 }}>
+              <div className="sf-row" style={{ gap: 6 }}>
+                <Terminal size={14} className="sf-blue" />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--sf-text)' }}>Prompt Registry Debug Panel</span>
+              </div>
+              <div className="sf-col" style={{ 
+                padding: '10px 12px', background: 'rgba(255,255,255,0.015)', 
+                borderRadius: 8, border: '1px solid var(--sf-border)', gap: 6 
+              }}>
+                <div className="sf-row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
+                  <span style={{ color: 'var(--sf-text-faint)' }}>Prompt Source:</span>
+                  <span className="mono" style={{ color: 'var(--sf-text-muted)' }}>{prompt.filename}</span>
+                </div>
+                <div className="sf-row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
+                  <span style={{ color: 'var(--sf-text-faint)' }}>Prompt Version:</span>
+                  <span className="mono" style={{ color: 'var(--sf-text-muted)' }}>{prompt.metadata.version}</span>
+                </div>
+                <div className="sf-row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
+                  <span style={{ color: 'var(--sf-text-faint)' }}>Schema:</span>
+                  <span className="mono" style={{ color: 'var(--sf-text-muted)' }}>{prompt.metadata.schema}</span>
+                </div>
+                <div className="sf-row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
+                  <span style={{ color: 'var(--sf-text-faint)' }}>Prompt Hash:</span>
+                  <span className="mono" style={{ color: 'var(--sf-blue)' }}>{prompt.metadata.promptHash}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Educational Panel */}
           <div style={{ borderTop: '1px solid var(--sf-border)', paddingTop: 20 }}>

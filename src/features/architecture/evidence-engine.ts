@@ -1,5 +1,5 @@
 import { IngestionResult } from "@/features/ingestion/types";
-import { StructuredEvidence, EvidenceClass } from "./domain-intelligence-types";
+import { StructuredEvidence, EvidenceClass, getEvidenceQuality } from "./domain-intelligence-types";
 
 export class EvidenceEngine {
   constructor(private result: IngestionResult) {}
@@ -127,6 +127,11 @@ export class EvidenceEngine {
          reasoning: "Forms represent business data entry points."
        });
     }
+
+    // Assign quality to all signals
+    signals.forEach((s: any) => {
+      s.quality = getEvidenceQuality(s.className, s.sourceType);
+    });
 
     return signals;
   }

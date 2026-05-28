@@ -1,6 +1,4 @@
 import { describe, test, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { ArchitectureGraph } from "../components/architecture-graph";
 import { BackendBlueprint } from "../types";
 
 describe("ArchitectureGraph Visualizer", () => {

@@ -28,6 +28,7 @@ export interface ContextUserJourney {
 
 export interface ContextWorkflow {
   name: string;
+  normalizedId?: string;
   description: string;
   trigger: string;
   outcome: string;
@@ -36,6 +37,7 @@ export interface ContextWorkflow {
 
 export interface ContextRole {
   name: string;
+  normalizedId?: string;
   permissions: string[];
   visibilityRules: string[];
 }
@@ -43,20 +45,50 @@ export interface ContextRole {
 export interface ContextEndpoint {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "UNKNOWN";
   path: string;
+  normalizedId?: string;
   description: string;
   isProtected?: boolean;
 }
 
 export interface ContextDataModel {
   name: string;
+  normalizedId?: string;
   fields: string[];
   relations: string[];
+  evidence?: string[];
+  capabilities?: string[];
+  lifecycle?: string[];
+  confidence?: string;
+  type?: string;
+  description?: string;
+  businessRules?: string[];
 }
 
 export interface ContextIntegration {
   name: string;
+  normalizedId?: string;
   purpose: string;
   category?: string;
+}
+
+export interface ContextRelationship {
+  source: string;
+  target: string;
+  type: string;
+  evidence: string[];
+  confidence: string;
+  normalizedId?: string;
+}
+
+export interface ContextCapability {
+  name: string;
+  entity: string;
+  category: string;
+  evidence: string[];
+  validationRules?: string[];
+  permissions?: string[];
+  confidence: string;
+  normalizedId?: string;
 }
 
 export interface ContextInfrastructure {
@@ -96,6 +128,17 @@ export interface SimplicitContext {
   roles: ContextRole[];
   endpoints: ContextEndpoint[];
   dataModels: ContextDataModel[];
+  relationships: ContextRelationship[];
+  capabilities: ContextCapability[];
+  entitiesConfidence: string;
+  relationshipsConfidence: string;
+  infrastructureConfidence: string;
+  metadata?: {
+    version?: string;
+    tool?: string;
+    schema?: string;
+    promptHash?: string;
+  };
   envVars: string[];
   fileUploads: string;
   realtime: string;
@@ -191,6 +234,7 @@ export interface FeatureModule {
   routes: string[];
   entities: string[];
   confidence: ConfidenceLevel;
+  normalizedId?: string;
 }
 
 export interface InferredRole {
@@ -198,6 +242,7 @@ export interface InferredRole {
   description: string;
   confidence: ConfidenceLevel;
   evidence: string[];
+  normalizedId?: string;
 }
 
 export interface InferredWorkflow {
@@ -207,6 +252,7 @@ export interface InferredWorkflow {
   entities: string[];
   confidence: ConfidenceLevel;
   evidence: string[];
+  normalizedId?: string;
 }
 
 export interface CRUDSystem {
@@ -247,6 +293,7 @@ export interface InferredEntity {
   name: string;
   confidence: ConfidenceLevel;
   hints: string[];
+  normalizedId?: string;
 }
 
 // ─── Inferred API Expectations ──────────────────────────────────────
@@ -255,6 +302,7 @@ export interface InferredAPI {
   path: string;
   purpose: string;
   confidence: ConfidenceLevel;
+  normalizedId?: string;
 }
 
 // ─── JSX Intent / Component Graph ───────────────────────────────────

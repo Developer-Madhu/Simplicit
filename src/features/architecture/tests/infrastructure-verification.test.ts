@@ -1,11 +1,12 @@
 import { describe, test, expect } from "vitest";
 import { InfraVerifier } from "../engines/infra-verifier";
-import { StructuredEvidence } from "../domain-intelligence-types";
+import { StructuredEvidence, EvidenceClass } from "../domain-intelligence-types";
 
 describe("InfraVerifier", () => {
   const verifier = new InfraVerifier();
 
   const mockDep = (val: string): StructuredEvidence => ({
+    className: EvidenceClass.DEPENDENCY,
     sourceType: "dependency",
     originalValue: val,
     semanticContext: "Mock",
