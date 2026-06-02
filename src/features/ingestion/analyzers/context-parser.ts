@@ -45,47 +45,19 @@ export function parseSimplicitContext(markdown: string): SimplicitContext {
     }
   }
 
-  // 2. Strict Schema Check
+  // 2. Schema Check (lenient)
+  // A recognized schema (simplicit-context-v2) yields the most accurate
+  // extraction, but a missing/unsupported schema must NOT block ingestion.
+  // We parse the markdown best-effort and surface a warning instead.
   const SUPPORTED_SCHEMAS = ["simplicit-context-v2"];
   const hasSupportedSchema = metadata.schema && SUPPORTED_SCHEMAS.includes(metadata.schema);
-
-  if (!hasSupportedSchema) {
-    return {
-      overview: { name: "", purpose: "", category: "unknown", description: "", goals: [] },
-      frontendStack: { framework: "Unknown", bundler: "Unknown", runtime: "Node.js", language: "JavaScript", uiLibraries: [], routingLibraries: [], stateLibraries: [], animationLibraries: [] },
-      auth: { provider: "Custom", loginMethods: [], roleModel: "RBAC", visibilityRules: [] },
-      businessRules: [],
-      validationRules: [],
-      userJourneys: [],
-      workflows: [],
-      roles: [],
-      endpoints: [],
-      dataModels: [],
-      relationships: [],
-      capabilities: [],
-      entitiesConfidence: "UNKNOWN",
-      relationshipsConfidence: "UNKNOWN",
-      infrastructureConfidence: "UNKNOWN",
-      metadata,
-      envVars: [],
-      fileUploads: "",
-      realtime: "",
-      integrations: [],
-      infrastructure: { database: "UNKNOWN", caching: "None", storage: "None", compute: "Managed", services: [] },
-      errorFormat: "",
-      rawMarkdown: markdown,
-      metrics: { routeCount: 0, pageCount: 0, protectedRouteCount: 0, publicRouteCount: 0, entityCount: 0, workflowCount: 0, integrationCount: 0 },
-      validation: {
-        isValid: false,
-        errors: [`Unsupported schema version: ${metadata.schema || "none"}. Ingestion blocked.`],
-        warnings: []
-      }
-    };
-  }
 
   const sections = splitIntoSections(contentMarkdown);
   const errors: string[] = [];
   const warnings: string[] = [];
+  if (!hasSupportedSchema) {
+    warnings.push(`Schema version "${metadata.schema || "none"}" is not the recommended "simplicit-context-v2". Parsing as best-effort context.`);
+  }
 
   // Required sections presence validation (emit warnings, do not fail)
   if (!sections.has("DOMAIN")) warnings.push("Missing required section: DOMAIN");
@@ -523,7 +495,8 @@ function parseWorkflows(content: string, journeys: ContextUserJourney[]): Contex
     const name = lines[0].trim();
     
     // Objective 6: Workflow Validation (Action-oriented filtering)
-    const isAction = /upload|generate|process|submit|manage|create|auth|view|track|request/i.test(name);
+    const isAction = /upload|generate|process|submit|manage|create|auth|view|track|request|post|save|apply|search|browse|join|send|publish|register|login|logout|discuss|comment|reply|share|delete|edit|update|review|approve|reject|book|schedule|pay|cancel|invite|assign/i.test(name)
+      || name.split(" ").length >= 2; // Multi-word names are almost always workflows
     const isSchemaDoc = /schema|public|database|table|foreign key|id:|primary key/i.test(name) || lines.some(l => l.includes("living in public schema"));
     
     if (name && isAction && !isSchemaDoc) {
@@ -556,27 +529,66 @@ function parseWorkflows(content: string, journeys: ContextUserJourney[]): Contex
 
 function parseRoles(content: string, overviewContent: string): ContextRole[] {
   const roles: ContextRole[] = [];
+  const seen = new Set<string>();
   const lines = content.split("\n");
 
   for (const line of lines) {
-    if (line.match(/^[-\s*]*\*\*/)) {
-      const match = line.match(/\*\*(.*?)\*\*[:\s]*(.*)/);
-      if (match) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Format 1: **RoleName**: permissions (existing format)
+    const boldMatch = trimmed.match(/\*\*(.*?)\*\*[:\s]*(.*)/);
+    if (boldMatch) {
+      const name = boldMatch[1].trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
         roles.push({
-          name: match[1].trim(),
-          permissions: match[2].split(",").map(p => p.trim()).filter(Boolean),
+          name,
+          permissions: boldMatch[2].split(",").map(p => p.trim()).filter(Boolean),
           visibilityRules: []
         });
+      }
+      continue;
+    }
+
+    // Format 2: plain bullet list — * RoleName or - RoleName
+    const bulletMatch = trimmed.match(/^[*\-]\s+([A-Za-z][A-Za-z\s]{1,30})$/);
+    if (bulletMatch) {
+      const name = bulletMatch[1].trim();
+      // Skip section headers and non-role words
+      const skipWords = new Set([
+        "evidence", "permissions", "roles", "users", "actors",
+        "description", "capabilities", "unknown"
+      ]);
+      if (name && !seen.has(name.toLowerCase()) && !skipWords.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        roles.push({
+          name,
+          permissions: [],
+          visibilityRules: []
+        });
+      }
+      continue;
+    }
+
+    // Format 3: plain word on its own line (no bullet)
+    // Only if it looks like a role name (single PascalCase word)
+    if (/^[A-Z][a-z]+$/.test(trimmed) && !seen.has(trimmed.toLowerCase())) {
+      const skipWords = new Set(["evidence", "unknown", "high", "medium", "low"]);
+      if (!skipWords.has(trimmed.toLowerCase())) {
+        seen.add(trimmed.toLowerCase());
+        roles.push({ name: trimmed, permissions: [], visibilityRules: [] });
       }
     }
   }
 
-  // Objective 8: Primary User Detection (Search Overview if Role section is thin)
+  // Fallback: search overview if roles still empty
   if (roles.length === 0) {
     const actorMatch = overviewContent.match(/actors:|users:|target users:(.*)/i);
     if (actorMatch) {
-       const actors = actorMatch[1].split(",").map(a => a.trim());
-       actors.forEach(a => roles.push({ name: a, permissions: [], visibilityRules: [] }));
+      actorMatch[1].split(",").map(a => a.trim()).forEach(a => {
+        if (a) roles.push({ name: a, permissions: [], visibilityRules: [] });
+      });
     }
   }
 
@@ -792,18 +804,99 @@ function parseList(content: string): string[] {
 
 function parseIntegrations(content: string): ContextIntegration[] {
   const integrations: ContextIntegration[] = [];
-  const lines = content.split("\n");
-  for (const line of lines) {
-    const clean = line.replace(/^[-\s*]+/, "").trim();
-    if (!clean || clean.length < 3) continue;
-    const parts = clean.split(":");
-    integrations.push({
-      name: parts[0]?.trim() || "Unknown",
-      purpose: parts.slice(1).join(":").trim(),
-      category: inferIntegrationCategory(parts[0]?.trim() || "")
-    });
+
+  // Format 1: Structured block format
+  // ### Integration\nName: X\nPurpose: Y\nEvidence:\n* Z\nConfidence: HIGH
+  const blockParts = content.split(/^###?\s*(?:Integration:?\s*)?/im);
+
+  for (const part of blockParts) {
+    if (!part.trim()) continue;
+    const lines = part.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+
+    let name = "";
+    let purpose = "";
+    const evidence: string[] = [];
+    let confidence = "";
+    let currentSection = "";
+
+    for (const line of lines) {
+      const lower = line.toLowerCase();
+      if (line.match(/^name\s*:/i)) {
+        name = line.split(":").slice(1).join(":").trim();
+        currentSection = "";
+      } else if (line.match(/^purpose\s*:/i)) {
+        purpose = line.split(":").slice(1).join(":").trim();
+        currentSection = "";
+      } else if (line.match(/^confidence\s*:/i)) {
+        confidence = line.split(":").slice(1).join(":").trim();
+        currentSection = "";
+      } else if (lower.startsWith("evidence:")) {
+        currentSection = "evidence";
+      } else if ((line.startsWith("*") || line.startsWith("-")) && currentSection === "evidence") {
+        evidence.push(line.slice(1).trim());
+      }
+    }
+
+    if (name && name.toUpperCase() !== "UNKNOWN") {
+      integrations.push({
+        name,
+        purpose,
+        category: inferIntegrationCategory(name),
+        evidence: evidence.length > 0 ? evidence : undefined,
+        confidence: confidence || undefined,
+      } as any);
+      continue;
+    }
+
+    // If no Name: field found, first non-empty line might be the name
+    // (handles simple single-line blocks)
+    const firstLine = lines[0];
+    if (
+      firstLine &&
+      !firstLine.startsWith("#") &&
+      !firstLine.toLowerCase().startsWith("evidence") &&
+      firstLine.length < 50
+    ) {
+      const parts = firstLine.split(":");
+      const flatName = parts[0].trim();
+      if (flatName && flatName.toUpperCase() !== "UNKNOWN" && !integrations.some(i => i.name === flatName)) {
+        integrations.push({
+          name: flatName,
+          purpose: parts.slice(1).join(":").trim(),
+          category: inferIntegrationCategory(flatName),
+        });
+      }
+    }
   }
-  return integrations;
+
+  // Format 2: flat list fallback — * Firebase: Authentication
+  if (integrations.length === 0) {
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const clean = line.replace(/^[-\s*#]+/, "").trim();
+      if (!clean || clean.length < 3) continue;
+      if (clean.toLowerCase().startsWith("integration")) continue;
+      const parts = clean.split(":");
+      const name = parts[0].trim();
+      if (name && name.length < 40 && name.toUpperCase() !== "UNKNOWN") {
+        integrations.push({
+          name,
+          purpose: parts.slice(1).join(":").trim(),
+          category: inferIntegrationCategory(name),
+        });
+      }
+    }
+  }
+
+  // Deduplicate by name
+  const seen = new Set<string>();
+  return integrations.filter(i => {
+    const key = i.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function inferIntegrationCategory(name: string): string {

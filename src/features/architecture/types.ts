@@ -66,6 +66,16 @@ export interface BackendBusinessRule {
   impact: string;
 }
 
+export interface ArchitecturePreferences {
+  database?: string;
+  authentication?: string;
+  storage?: string;
+  email?: string;
+  payments?: string;
+  queue?: string;
+  deployment?: string;
+}
+
 export interface BackendBlueprint {
   summary: string;
   modules: BlueprintModule[];
@@ -128,11 +138,16 @@ export interface BlueprintModule {
 
 export interface BlueprintEntity {
   name: string;
-  table: string;
+  tableName: string;
   description?: string;
   fields: BlueprintField[];
   relationships?: any[];
   indexes: string[];
+  constraints: string[];
+  ownership?: {
+    ownedBy?: string;
+    isOwner?: boolean;
+  };
   evidence?: any[];
 }
 
@@ -143,7 +158,19 @@ export interface BlueprintField {
   isNullable?: boolean;
   isUnique?: boolean;
   references?: string;
+  validation?: BlueprintValidation;
   evidence?: any[];
+}
+
+export interface BlueprintValidation {
+  required?: boolean;
+  format?: "email" | "uuid" | "url" | "ipv4" | "ipv6";
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  enum?: string[];
 }
 
 export interface BlueprintDatabase {
@@ -209,4 +236,26 @@ export interface ArchitectureReviewState {
   confidenceLevels: Record<string, number>;
   gaps: any[]; // ArchitectureGap[]
   activePattern?: any; // ArchitecturePattern
+}
+
+export interface ResolvedArchitectureState {
+  domainGraph: any; // DomainGraph
+  entities: any[]; // DomainEntity[]
+  relationships: any[]; // DomainRelationship[]
+  capabilities: any[]; // BusinessCapability[]
+  infrastructure: BackendInfrastructure;
+  stackSelections: ArchitecturePreferences;
+  resolvedGapAnswers: Record<string, string>;
+  remainingGaps: any[]; // ArchitectureGap[]
+  readinessScore: number;
+  confidenceLevels: Record<string, number>;
+  overview: {
+    name: string;
+    description: string;
+    type: string;
+    complexity: number;
+  };
+  roles: any[]; // DomainRole[]
+  businessRules: any[]; // ArchitectureRule[]
+  suggestions: any[]; // PatternSuggestion[]
 }

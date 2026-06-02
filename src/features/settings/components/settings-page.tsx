@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/context/auth-context";
+import { useToast } from "@/features/auth/context/toast-context";
+import { useWorkspace } from "@/features/workspace/context/workspace-context";
+import { useProfile, useUpdateProfile, useDisplayName } from "@/features/workspace/api/workspaces";
 import {
   Bell,
   Cloud,
@@ -127,10 +130,11 @@ const SECTIONS = [
 
 export function SettingsPage() {
   const [section, setSection] = useState("api-keys");
+  const displayName = useDisplayName();
 
   return (
     <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
-      <AppTopbar breadcrumbs={["Acme Studio", "Settings"]} />
+      <AppTopbar breadcrumbs={[displayName, "Settings"]} />
 
       <div className="sf-row sf-grow" style={{ minHeight: 0 }}>
         {/* Settings sidebar */}
@@ -477,6 +481,26 @@ function AISection() {
 function ProfileSection() {
   const { signOut } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+  const { activeWorkspace } = useWorkspace();
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
+
+  const [name, setName] = useState("");
+  useEffect(() => {
+    if (profile) setName(profile.full_name ?? "");
+  }, [profile?.full_name]);
+
+  const dirty = profile != null && name.trim() !== (profile.full_name ?? "");
+
+  const handleSave = async () => {
+    try {
+      await updateProfile.mutateAsync({ full_name: name.trim() || null as any });
+      toast("Profile updated", "success");
+    } catch (e: any) {
+      toast(e?.message || "Failed to update profile", "error");
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -487,11 +511,31 @@ function ProfileSection() {
   return (
     <>
       <SectionHead title="Profile" subtitle="Your workspace identity." />
-      <FieldRow label="Display name">
-        <input className="sf-input" defaultValue="Alex Chen" style={{ maxWidth: 320, height: 36 }} />
+      <FieldRow label="Display name" hint="Shown across the app — sidebar, breadcrumbs and project bylines.">
+        <div className="sf-row" style={{ gap: 8 }}>
+          <input
+            className="sf-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            maxLength={60}
+            style={{ maxWidth: 320, height: 36 }}
+          />
+          <button
+            className="sf-btn sf-btn--primary sf-btn--sm"
+            onClick={handleSave}
+            disabled={!dirty || updateProfile.isPending}
+            type="button"
+          >
+            {updateProfile.isPending ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </FieldRow>
+      <FieldRow label="Email">
+        <input className="sf-input" value={profile?.email ?? ""} readOnly style={{ maxWidth: 320, height: 36, opacity: 0.7 }} />
       </FieldRow>
       <FieldRow label="Workspace name" hint="Shown in the sidebar and on shared links.">
-        <input className="sf-input" defaultValue="Acme Studio" style={{ maxWidth: 320, height: 36 }} />
+        <input className="sf-input" value={activeWorkspace?.name ?? ""} readOnly style={{ maxWidth: 320, height: 36, opacity: 0.7 }} />
       </FieldRow>
       <FieldRow label="Theme" hint="Dark only for now. Light coming soon.">
         <div className="sf-row" style={{ gap: 8 }}>

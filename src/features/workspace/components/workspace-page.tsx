@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateProject, useUpdateProject } from "@/features/dashboard";
 import { useToast } from "@/features/auth/context/toast-context";
+import { sanitizePrompt } from "@/lib/prompt-sanitizer";
 import { useAuth } from "@/features/auth/context/auth-context";
 import { useWorkspace } from "@/features/workspace/context/workspace-context";
 import type { IngestionResult, ClarificationQuestion } from "@/features/ingestion/types";
@@ -16,7 +17,13 @@ import { AnalysisSummary } from "@/features/ingestion/components/analysis-summar
 import { ContextGeneratorHub } from "@/features/generation";
 import { ClarificationQuestions } from "@/features/ingestion/components/clarification-questions";
 import { generateClarificationQuestions, mapAnswersToArchitecture } from "@/features/ingestion/analyzers/question-generator";
-import { ArchitectureReview, BackendSpecification, BackendBlueprint, BlueprintReview, generateBackendBlueprint } from "@/features/architecture";
+import { 
+  ArchitectureReview, BackendSpecification, BackendBlueprint, BlueprintReview, 
+  generateBackendBlueprint, detectArchitectureRequirements, ArchitectureRequirements, 
+  ArchitecturePreferences, StackSelectionWizard, DomainIntelligenceEngine,
+  GapResolutionWizard, GapQuestion, GapResolutionAnswer, generateGapQuestions, applyGapResolutionsToGraph,
+  resolveArchitectureState, ResolvedArchitectureState
+} from "@/features/architecture";
 import {
   Check,
   Download,
@@ -405,7 +412,12 @@ export function WorkspacePage() {
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
 
-  const [stage, setStage] = useState<'idle' | 'composing' | 'analyzing' | 'clarifying' | 'reviewing' | 'blueprinting' | 'streaming' | 'done' | 'failed'>('idle');
+  const [stage, setStage] = useState<'idle' | 'composing' | 'analyzing' | 'stack-selection' | 'clarifying' | 'reviewing' | 'blueprinting' | 'streaming' | 'done' | 'failed'>('idle');
+  const [architectureRequirements, setArchitectureRequirements] = useState<ArchitectureRequirements | null>(null);
+  const [architecturePreferences, setArchitecturePreferences] = useState<ArchitecturePreferences | null>(null);
+  const [architectureConfigured, setArchitectureConfigured] = useState(false);
+  const [gapResolutionQuestions, setGapResolutionQuestions] = useState<GapQuestion[]>([]);
+  const [resolvedGapAnswers, setResolvedGapAnswers] = useState<GapResolutionAnswer[]>([]);
   const [prompt, setPrompt] = useState('');
   const [streamStep, setStreamStep] = useState(0); 
   const [previewTab, setPreviewTab] = useState<'arch' | 'schema' | 'routes' | 'files'>('arch');
@@ -428,11 +440,25 @@ export function WorkspacePage() {
   const [showIngestionPanel, setShowIngestionPanel] = useState(false);
   const [ingestionResult, setIngestionResult] = useState<IngestionResult | null>(null);
   const [clarificationQuestions, setClarificationQuestions] = useState<ClarificationQuestion[]>([]);
+  const [clarificationAnswers, setClarificationAnswers] = useState<Record<string, string | string[]>>({});
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [backendSpec, setBackendSpec] = useState<BackendSpecification | null>(null);
   const [blueprint, setBlueprint] = useState<BackendBlueprint | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Canonical Architecture State (Single Source of Truth)
+  const resolvedArchitecture = useMemo(() => {
+    if (!ingestionResult) return null;
+    return resolveArchitectureState(
+      ingestionResult,
+      answers,
+      prompt || heroPrompt,
+      architecturePreferences,
+      resolvedGapAnswers,
+      gapResolutionQuestions
+    );
+  }, [ingestionResult, answers, prompt, architecturePreferences, resolvedGapAnswers, gapResolutionQuestions]);
 
   // Restore draft and history on mount
   useEffect(() => {
@@ -500,11 +526,26 @@ export function WorkspacePage() {
 
     const mappedRequirements = finalAnswers ? mapAnswersToArchitecture(finalAnswers) : mapAnswersToArchitecture(answers);
 
-    // Create project in Supabase with "building" status
-    const fullStack = stackMap[stack] || `${stack} \u00b7 PG \u00b7 Redis`;
+    // Create project in Supabase with "building" status.
+    // Stack string is composed from the user's actual wizard selections when
+    // available, falling back to the framework default only if none were made.
+    const prefs = architecturePreferences;
+    const stackParts = [stack, prefs?.database, prefs?.authentication].filter(Boolean) as string[];
+    const fullStack = stackParts.length > 1 ? stackParts.join(' \u00b7 ') : (stackMap[stack] || `${stack} \u00b7 PG \u00b7 Redis`);
+
+    // Clean, readable project name derived from the prompt \u2014 preserve spacing,
+    // hyphens and capitalization instead of mangling words together.
+    const derivedName = finalPrompt
+      .trim()
+      .split(/\s+/)
+      .slice(0, 4)
+      .join(' ')
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim();
     try {
       const project = await createMutation.mutateAsync({
-        name: finalPrompt.split(' ').slice(0, 4).join(' ').replace(/[^\w\s]/g, '').trim() || 'New Project',
+        name: derivedName || 'New Project',
         prompt: finalPrompt,
         stack: fullStack,
         workspace_id: activeWorkspace.id,
@@ -517,6 +558,7 @@ export function WorkspacePage() {
           requirements: mappedRequirements,
           specification: spec || backendSpec,
           blueprint: bprint || blueprint,
+          preferences: architecturePreferences,
         },
         simplicit_context: ingestionResult?.simplicitContext || null
       });
@@ -547,6 +589,7 @@ export function WorkspacePage() {
           requirements: mappedRequirements,
           specification: spec || backendSpec,
           blueprint: bprint || blueprint,
+          preferences: architecturePreferences,
         }),
         signal: controller.signal,
       });
@@ -623,6 +666,15 @@ export function WorkspacePage() {
     const finalPrompt = prompt.trim() || heroPrompt;
     if (!prompt.trim()) setPrompt(finalPrompt);
 
+    // Client-side prompt safety check (blocks credential paste / injection early;
+    // the API route re-validates server-side as the source of truth).
+    const sanitized = sanitizePrompt(finalPrompt);
+    if (sanitized.blocked) {
+      toast(sanitized.reason ?? 'Invalid prompt', 'error');
+      return;
+    }
+    sanitized.warnings.forEach(w => toast(w, 'info'));
+
     setFailureDetails(null);
     pushHistory(finalPrompt);
     setHistory(loadHistory());
@@ -630,18 +682,37 @@ export function WorkspacePage() {
 
     const realLocalMode = typeof isLocalRun === 'boolean' ? isLocalRun : false;
 
-    // Trigger clarification flow if ingestion result exists and we haven't asked yet
-    if (ingestionResult && clarificationQuestions.length === 0) {
-      const questions = generateClarificationQuestions(ingestionResult, finalPrompt);
-      if (questions.length > 0) {
-        setClarificationQuestions(questions);
-        setStage('clarifying');
-        return;
-      }
+    // Prompt-only flow (no ingestion upload → no resolved architecture):
+    // skip the architecture-review pipeline and generate directly from the
+    // prompt. The upload-based flow below is unchanged.
+    if (!resolvedArchitecture) {
+      executeGeneration(realLocalMode);
+      return;
+    }
+
+    // Phase 3: Route to Stack Selection Wizard if not configured
+    if (!architectureConfigured && stage !== 'stack-selection') {
+      const requirements = detectArchitectureRequirements(resolvedArchitecture.domainGraph);
+      
+      setArchitectureRequirements(requirements);
+      console.log('Analysis Complete -> stack-selection');
+      setStage('stack-selection');
+      return;
+    }
+
+    // Phase 12: Trigger Gap Resolution Engine if there are unresolved critical gaps
+    if (gapResolutionQuestions.length === 0) {
+        const generatedQuestions = generateGapQuestions(resolvedArchitecture.remainingGaps);
+        if (generatedQuestions.length > 0) {
+            setGapResolutionQuestions(generatedQuestions);
+            console.log('Stack Selection Complete -> gap-resolution');
+            setStage('clarifying'); 
+            return;
+        }
     }
 
     // NEW: If we have ingestion result but haven't reviewed yet, go to architecture review
-    if (ingestionResult && !backendSpec && stage !== 'reviewing') {
+    if (!backendSpec && stage !== 'reviewing') {
       setStage('reviewing');
       return;
     }
@@ -653,7 +724,7 @@ export function WorkspacePage() {
     }
 
     executeGeneration(realLocalMode);
-  }, [prompt, ingestionResult, clarificationQuestions.length, executeGeneration]);
+  }, [prompt, ingestionResult, architectureConfigured, clarificationQuestions.length, executeGeneration, answers]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
@@ -875,26 +946,40 @@ export function WorkspacePage() {
                   </div>
                 </div>
               </div>
-            ) : stage === 'clarifying' ? (
+            ) : stage === 'stack-selection' && architectureRequirements ? (
               <div style={{ width: '100%', maxWidth: 760 }}>
-                <ClarificationQuestions
-                  questions={clarificationQuestions}
-                  onComplete={(finalAnswers) => {
-                    setAnswers(finalAnswers);
-                    setStage('reviewing');
+                <StackSelectionWizard
+                  requirements={architectureRequirements}
+                  onComplete={(preferences) => {
+                    setArchitecturePreferences(preferences);
+                    setArchitectureConfigured(true);
+                    
+                    // orchestration will be handled by startGeneration when called next
+                    // but since we want auto-advance, we can call it here
+                    setTimeout(() => startGeneration(), 50);
                   }}
                 />
               </div>
-            ) : stage === 'reviewing' ? (
+            ) : stage === 'clarifying' ? (
+              <div style={{ width: '100%', maxWidth: 760 }}>
+                <GapResolutionWizard
+                  questions={gapResolutionQuestions}
+                  onComplete={(answers) => {
+                    setResolvedGapAnswers(answers);
+                    console.log('Gap Resolution Complete -> reviewing');
+                    setTimeout(() => startGeneration(), 50);
+                  }}
+                />
+              </div>
+            ) : stage === 'reviewing' && resolvedArchitecture ? (
               <div style={{ width: '100%', maxWidth: 860 }}>
                 <ArchitectureReview
-                  ingestionResult={ingestionResult!}
-                  answers={answers}
-                  prompt={prompt || heroPrompt}
+                  resolvedArchitecture={resolvedArchitecture}
                   onApprove={(spec) => {
                     setBackendSpec(spec);
-                    const bprint = generateBackendBlueprint(spec, ingestionResult!, answers, prompt || heroPrompt);
+                    const bprint = generateBackendBlueprint(spec, resolvedArchitecture);
                     setBlueprint(bprint);
+                    console.log('Review Approved -> blueprinting');
                     setStage('blueprinting');
                   }}
                   onEdit={() => {
@@ -908,6 +993,7 @@ export function WorkspacePage() {
                   blueprint={blueprint!}
                   onApprove={(bprint) => {
                     setBlueprint(bprint);
+                    console.log('Blueprint Approved -> generation');
                     executeGeneration(false, answers, backendSpec!, bprint);
                   }}
                   onEdit={() => {
@@ -1085,14 +1171,6 @@ export function WorkspacePage() {
               </div>
             ) : (
               <div style={{ width: '100%', maxWidth: 760 }}>
-                <div className="sf-row" style={{ gap: 8, marginBottom: 18, justifyContent: 'center' }}>
-                  <span className="sf-chip" style={{ height: 24, padding: '0 10px' }}>
-                    <Sparkles size={11} /> Simplicit · v2.4
-                  </span>
-                  <span className="sf-chip sf-chip-mono" style={{ height: 24, padding: '0 10px' }}>
-                    claude-architect
-                  </span>
-                </div>
                 <h1 className="sf-h1" style={{ textAlign: 'center', marginBottom: 10, fontSize: 32, margin: 0, color: 'var(--sf-text)' }}>
                   What are you shipping?
                 </h1>
@@ -1105,6 +1183,7 @@ export function WorkspacePage() {
                   <IngestionPanel
                     onComplete={(result) => {
                       setIngestionResult(result);
+                      setClarificationQuestions(result.clarificationQuestions ?? []);
                       setShowIngestionPanel(false);
                       // Auto-populate prompt hint from ingested project
                       if (result.metadata.name && !prompt) {
@@ -1129,6 +1208,47 @@ export function WorkspacePage() {
                   />
                 )}
 
+                {/* Ingestion clarification questions (improve accuracy before architecture) */}
+                {ingestionResult && clarificationQuestions.length > 0 && (
+                  <div className="sf-col" style={{ gap: 10, marginBottom: 16 }}>
+                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--sf-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      A few questions to improve accuracy
+                    </span>
+                    {clarificationQuestions.map((q, idx) => {
+                      const selected = clarificationAnswers[q.id];
+                      return (
+                        <div key={q.id ?? idx} className="sf-card" style={{ padding: '12px 14px', background: 'var(--sf-bg)' }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--sf-text)', marginBottom: q.options?.length ? 10 : 0 }}>{q.text}</div>
+                          {q.options && q.options.length > 0 && (
+                            <div className="sf-row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                              {q.options.map((opt) => {
+                                const isSel = selected === opt.value;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => setClarificationAnswers(prev => ({ ...prev, [q.id]: opt.value }))}
+                                    className="sf-chip"
+                                    type="button"
+                                    style={{
+                                      height: 26,
+                                      cursor: 'pointer',
+                                      color: isSel ? 'var(--sf-text)' : 'var(--sf-text-muted)',
+                                      borderColor: isSel ? 'var(--sf-blue)' : 'var(--sf-border)',
+                                      background: isSel ? 'var(--sf-surface-2)' : 'transparent',
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* Big prompt card */}
                 <div className="sf-card-elev" style={{
                   padding: 0, overflow: 'hidden',
@@ -1141,6 +1261,7 @@ export function WorkspacePage() {
                     onKeyDown={e => { if ((e.metaKey||e.ctrlKey) && e.key === 'Enter') startGeneration(); }}
                     placeholder="Build backend for an online exam platform with student auth, instructor dashboard, analytics, payments, and test management."
                     rows={4}
+                    maxLength={2000}
                     style={{
                       width: '100%', padding: '20px 22px', resize: 'none',
                       background: 'transparent', border: 'none', outline: 'none',
@@ -1165,33 +1286,10 @@ export function WorkspacePage() {
                     >
                       <Plus size={12} /> {ingestionResult ? 'Attached' : 'Attach'}
                     </button>
-                    <div className="sf-vdivider" style={{ height: 18, margin: '0 2px' }} />
-                    {/* Stack selector */}
-                    <div className="sf-row" style={{ gap: 4 }}>
-                      <span className="sf-faint" style={{ fontSize: 11.5 }}>stack</span>
-                      <div className="sf-row" style={{ background: 'var(--sf-surface)', borderRadius: 6, padding: 2 }}>
-                        {['Hono', 'Fastify', 'Express'].map(s => (
-                          <button key={s} onClick={() => setStack(s)} className="mono" style={{
-                            height: 22, padding: '0 8px', borderRadius: 4, border: 'none',
-                            background: stack === s ? 'var(--sf-elevated)' : 'transparent',
-                            color: stack === s ? 'var(--sf-text)' : 'var(--sf-text-muted)',
-                            fontSize: 10.5, cursor: 'pointer',
-                          }} type="button">{s}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="sf-vdivider" style={{ height: 18, margin: '0 2px' }} />
-                    <button className="sf-btn sf-btn--sm sf-btn--ghost" style={{ padding: '0 8px' }} type="button">
-                      Postgres
-                    </button>
-                    <button className="sf-btn sf-btn--sm sf-btn--ghost" style={{ padding: '0 8px' }} type="button">
-                      <Lock size={12} /> Lucia
-                    </button>
-
                     <span className="sf-grow" />
 
-                    <span className="sf-faint mono" style={{ fontSize: 10.5, marginRight: 8 }}>
-                      {prompt.length} · ⌘↵ to run
+                    <span className="mono" style={{ fontSize: 10.5, marginRight: 8, color: prompt.length > 1800 ? 'var(--sf-red)' : 'var(--sf-text-faint)' }}>
+                      {prompt.length}/2000 · ⌘↵ to run
                     </span>
                     <button
                       disabled={(stage as any) === 'streaming'}
@@ -1252,23 +1350,6 @@ export function WorkspacePage() {
                   </div>
                 )}
 
-                {/* Suggestion chips */}
-                <div style={{ marginTop: 20 }}>
-                  <div className="sf-row" style={{ marginBottom: 10 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--sf-text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                      Smart suggestions
-                    </span>
-                  </div>
-                  <div className="sf-row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                    {promptSuggestions.map(s => (
-                      <button key={s} onClick={() => { setPrompt(p => p + (p ? ' ' : '') + s + '.'); setStage('composing'); }} className="sf-chip" style={{
-                        height: 26, padding: '0 10px', fontSize: 11.5, cursor: 'pointer', background: 'transparent',
-                      }} type="button">
-                        <Plus size={10} style={{ marginRight: 4 }} /> {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
           </div>

@@ -183,6 +183,8 @@ export interface ArchitectureGap {
   impact: string;
   requiredForGeneration: boolean;
   questionId?: string;
+  entityName?: string;
+  isResolved?: boolean;
 }
 
 export interface PatternSuggestion {

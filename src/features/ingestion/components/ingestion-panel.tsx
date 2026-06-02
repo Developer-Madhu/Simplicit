@@ -52,6 +52,11 @@ export function IngestionPanel({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Optional Graphify graph.json (higher-accuracy extraction)
+  const [graphifyText, setGraphifyText] = useState<string | null>(null);
+  const [graphifyFileName, setGraphifyFileName] = useState<string | null>(null);
+  const graphifyInputRef = useRef<HTMLInputElement>(null);
+
   // GitHub state
   const [githubUrl, setGithubUrl] = useState("");
   const [pat, setPat] = useState("");
@@ -176,6 +181,22 @@ export function IngestionPanel({
     []
   );
 
+  const handleGraphifySelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        setError("Please select a graph.json file from your graphify-out folder.");
+        return;
+      }
+      const text = await file.text();
+      setGraphifyText(text);
+      setGraphifyFileName(file.name);
+      setError(null);
+    },
+    []
+  );
+
   const processZip = useCallback(async () => {
     if (!selectedFile) return;
 
@@ -209,13 +230,19 @@ export function IngestionPanel({
         );
       }
 
+      // Optional: inject a user-supplied Graphify graph.json so the pipeline
+      // imports it for higher-accuracy extraction (detected automatically in index.ts).
+      if (graphifyText) {
+        files.set("graphify-out/graph.json", graphifyText);
+      }
+
       await runAnalysis(files, "zip");
     } catch (err: any) {
       setState("error");
       setError(err.message || "Failed to process ZIP file");
       setProgressPercent(0);
     }
-  }, [selectedFile, runAnalysis]);
+  }, [selectedFile, graphifyText, runAnalysis]);
 
   // ─── Context Handlers ──────────────────────────────────────────
   const handleContextSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -475,6 +502,9 @@ export function IngestionPanel({
             onFileSelect={handleFileSelect}
             onProcess={processZip}
             fileInputRef={fileInputRef}
+            graphifyFileName={graphifyFileName}
+            onGraphifySelect={handleGraphifySelect}
+            graphifyInputRef={graphifyInputRef}
           />
         )}
 
@@ -659,6 +689,12 @@ function SelectionContent({
         })}
       </div>
 
+      <p style={{ fontSize: 11.5, color: 'var(--sf-text-muted)', margin: '2px 0 0', lineHeight: 1.5 }}>
+        For monorepos, select the main web application (usually{' '}
+        <span className="mono" style={{ color: 'var(--sf-text)' }}>apps/web</span> or{' '}
+        <span className="mono" style={{ color: 'var(--sf-text)' }}>apps/app</span>) rather than the root for best results.
+      </p>
+
       <div className="sf-row" style={{ gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
         <button onClick={onCancel} className="sf-btn sf-btn--ghost sf-btn--sm" type="button">Cancel</button>
         <button onClick={() => onSelect(selected)} className="sf-btn sf-btn--primary sf-btn--sm" type="button">Analyze selected</button>
@@ -683,6 +719,9 @@ function ZipContent({
   onFileSelect,
   onProcess,
   fileInputRef,
+  graphifyFileName,
+  onGraphifySelect,
+  graphifyInputRef,
 }: {
   dragOver: boolean;
   selectedFile: File | null;
@@ -697,6 +736,9 @@ function ZipContent({
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onProcess: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  graphifyFileName: string | null;
+  onGraphifySelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  graphifyInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   return (
     <div className="sf-col" style={{ gap: 12 }}>
@@ -787,6 +829,35 @@ function ZipContent({
           </div>
         )}
       </div>
+
+      {/* Optional: Graphify graph.json for higher-accuracy extraction */}
+      {!isProcessing && (
+        <div className="sf-row" style={{ gap: 6, fontSize: 12, color: "var(--sf-text-muted)" }}>
+          <input
+            ref={graphifyInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={onGraphifySelect}
+            style={{ display: "none" }}
+          />
+          {graphifyFileName ? (
+            <span className="sf-row" style={{ gap: 6, color: "oklch(0.78 0.16 145)" }}>
+              <CheckCircle2 size={12} />
+              <span className="mono" style={{ fontSize: 11 }}>{graphifyFileName} attached</span>
+            </span>
+          ) : (
+            <span>
+              Have a graphify-out folder?{" "}
+              <span
+                onClick={() => graphifyInputRef.current?.click()}
+                style={{ color: "var(--sf-blue)", cursor: "pointer", textDecoration: "underline" }}
+              >
+                Upload graph.json for higher accuracy ↗
+              </span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Progress bar */}
       {isProcessing && (

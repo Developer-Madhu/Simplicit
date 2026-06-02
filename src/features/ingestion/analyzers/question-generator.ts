@@ -24,9 +24,6 @@ function deriveKnownFacts(result: IngestionResult, prompt: string) {
   };
 
   return {
-    hasAuth: getSignal(["auth", "login", "clerk", "supabase auth", "nextauth", "lucia"]),
-    hasPayments: getSignal(["payment", "billing", "subscription", "stripe", "lemon", "paddle"]),
-    hasStorage: getSignal(["upload", "file", "image", "s3", "storage", "resume"]),
     hasAI: getSignal(["ai", "llm", "openai", "gemini", "anthropic", "generate", "analyze"]),
     hasNotifications: getSignal(["notification", "email", "sms", "push", "resend", "sendgrid"]),
     hasRoles: metadata.roles.length > 0 ? "Deterministic" : "Heuristic inference",
@@ -54,26 +51,7 @@ export function generateClarificationQuestions(
     { label: "Other (Custom)", value: "other", description: "Provide a custom requirement", isCustom: true }
   ];
 
-  // 1. Authentication
-  if (facts.hasAuth !== "Deterministic") {
-    questions.push({
-      id: "auth_provider",
-      category: "Authentication",
-      type: "single-choice",
-      confidence: facts.hasAuth as ConfidenceLevel,
-      text: facts.hasAuth === "Heuristic inference" 
-        ? "How should user authentication be handled?"
-        : "Confirm: Use standard email/password authentication?",
-      reason: "Authentication is the foundation of security. We detected potential auth requirements.",
-      options: addOther([
-        { label: "Supabase Auth", value: "supabase", description: "Integrated with Supabase database" },
-        { label: "Clerk / Auth0", value: "clerk", description: "Managed user management service" },
-        { label: "NextAuth.js", value: "nextauth", description: "Customizable serverless auth" },
-      ])
-    });
-  }
-
-  // 2. User Roles & Permissions
+  // 1. User Roles & Permissions
   if (result.metadata.roles.length > 0) {
     questions.push({
       id: "rbac_model",
@@ -90,7 +68,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 3. Multi-tenancy / Team Collaboration
+  // 2. Multi-tenancy / Team Collaboration
   if (facts.hasMultiTenancy !== "Deterministic") {
     questions.push({
       id: "multi_tenancy",
@@ -107,23 +85,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 4. Payments
-  if (facts.hasPayments !== "Deterministic" && facts.hasPayments !== "Heuristic inference") {
-    questions.push({
-      id: "payment_provider",
-      category: "Payments",
-      type: "single-choice",
-      confidence: facts.hasPayments as ConfidenceLevel,
-      text: "Which payment infrastructure should be integrated?",
-      reason: "Monetization signals detected in the business logic.",
-      options: addOther([
-        { label: "Stripe", value: "stripe", description: "Standard for subscriptions and checkout" },
-        { label: "LemonSqueezy / Paddle", value: "reseller", description: "Managed tax and merchant of record" },
-      ])
-    });
-  }
-
-  // 5. AI Features
+  // 3. AI Features
   if (facts.hasAI !== "Deterministic" && facts.hasAI !== "Heuristic inference") {
     questions.push({
       id: "ai_provider",
@@ -140,24 +102,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 6. File Storage
-  if (facts.hasStorage !== "Deterministic" && facts.hasStorage !== "Heuristic inference") {
-    questions.push({
-      id: "storage_strategy",
-      category: "File Storage",
-      type: "single-choice",
-      confidence: facts.hasStorage as ConfidenceLevel,
-      text: "Where should uploaded files and documents be persisted?",
-      reason: "Requirement for file management detected.",
-      options: addOther([
-        { label: "S3 Compatible (AWS/R2)", value: "s3" },
-        { label: "Supabase Storage", value: "supabase_storage" },
-        { label: "Cloudinary", value: "cloudinary", description: "Best for images/videos" },
-      ])
-    });
-  }
-
-  // 7. Audit Logs / Activity
+  // 4. Audit Logs / Activity
   if (facts.hasAuditLogs === "Strong evidence" || facts.hasAuditLogs === "Multi-source confirmation") {
      questions.push({
         id: "audit_granularity",
@@ -174,7 +119,7 @@ export function generateClarificationQuestions(
      });
   }
 
-  // 8. Public Sharing
+  // 5. Public Sharing
   if (facts.hasPublicSharing === "Strong evidence" || facts.hasPublicSharing === "Multi-source confirmation") {
     questions.push({
       id: "public_visibility",
@@ -191,7 +136,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 9. Analytics
+  // 6. Analytics
   if (facts.hasAnalytics === "Strong evidence" || facts.hasAnalytics === "Multi-source confirmation") {
     questions.push({
       id: "analytics_scope",
@@ -208,7 +153,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 10. Approval Workflows
+  // 7. Approval Workflows
   if (facts.hasApprovalWorkflows !== "Deterministic") {
     questions.push({
       id: "approval_process",
@@ -225,7 +170,7 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 11. Integrations
+  // 8. Integrations
   questions.push({
     id: "external_integrations",
     category: "Integrations",
@@ -241,7 +186,7 @@ export function generateClarificationQuestions(
     ])
   });
 
-  // 12. Exam Specific (Objective 12)
+  // 9. Exam Specific (Objective 12)
   if (facts.isExamPlatform === "Strong evidence" || facts.isExamPlatform === "Multi-source confirmation") {
     questions.push({
       id: "exam_proctoring",
@@ -258,21 +203,6 @@ export function generateClarificationQuestions(
     });
   }
 
-  // 11. Deployment
-  questions.push({
-    id: "deployment_target",
-    category: "Deployment",
-    type: "single-choice",
-    confidence: "Heuristic inference",
-    text: "Where is the production environment hosted?",
-    reason: "Optimizing infrastructure as code generation.",
-    options: addOther([
-      { label: "Railway / Fly.io", value: "paas" },
-      { label: "AWS / GCP", value: "cloud" },
-      { label: "Vercel (Serverless)", value: "vercel" },
-    ])
-  });
-
   return questions;
 }
 
@@ -286,34 +216,22 @@ export function mapAnswersToArchitecture(answers: Record<string, string | string
     permissions: [],
     workflows: [],
     integrations: [],
-    storage: null,
     security: [],
-    deployment: null
   };
 
   for (const [id, value] of Object.entries(answers)) {
     const valStr = Array.isArray(value) ? value.join(", ") : String(value);
 
-    // Auth & Security
-    if (id === "auth_provider") requirements.integrations.push({ type: "auth", provider: value });
+    // Security
     if (id === "rbac_model") requirements.security.push({ type: "access_control", model: value });
-
-    // Storage
-    if (id === "storage_strategy") requirements.storage = { provider: value };
 
     // AI
     if (id === "ai_provider") requirements.integrations.push({ type: "ai", provider: value });
-
-    // Payments
-    if (id === "payment_provider") requirements.integrations.push({ type: "payments", provider: value });
 
     // Notifications
     if (id === "notification_methods") {
       (value as string[]).forEach(v => requirements.workflows.push({ type: "notification", channel: v }));
     }
-
-    // Deployment
-    if (id === "deployment_target") requirements.deployment = { target: value };
 
     // Custom
     if (valStr.startsWith("custom: ")) {

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ToastProvider } from "@/features/auth/context/toast-context";
 import { AuthProvider } from "@/features/auth/context/auth-context";
 import { WorkspaceProvider } from "@/features/workspace/context/workspace-context";
+import { ChunkReloadGuard } from "./chunk-reload-guard";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ChunkReloadGuard />
       <ToastProvider>
         <AuthProvider>
           <WorkspaceProvider>

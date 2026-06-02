@@ -6,6 +6,12 @@ import type {
   SchemaTable
 } from "@/lib/types";
 import type { NormalizedSchema } from "./schema-types";
+import type { 
+  ApiSurfaceDefinition, 
+  ServiceDefinition, 
+  DtoDefinition, 
+  PermissionDefinition 
+} from "./surface-types";
 
 export interface AuthStrategy {
   providers: string;
@@ -41,6 +47,12 @@ export interface GenerationMetadata {
   authStrategy: AuthStrategy;
   authFlowSteps: AuthFlowStep[];
   envVariables: EnvVariable[];
+  files?: Record<string, string>;
   normalizedSchema?: NormalizedSchema;
+  apiSurface?: ApiSurfaceDefinition[];
+  services?: ServiceDefinition[];
+  serviceImplementations?: Record<string, Record<string, string>>;
+  dtos?: DtoDefinition[];
+  permissions?: PermissionDefinition;
 }
 

@@ -1,0 +1,71 @@
+/* Responsive layout for the deployment wizard. Container queries so the page
+   reacts to the content area shrinking when the app sidebar opens. */
+
+.root {
+  container-type: inline-size;
+  container-name: deploy;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.rail {
+  width: 280px;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  padding: 28px 20px;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* Env-var rows wrap cleanly and the key truncates instead of squeezing. */
+.envRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.envKey {
+  flex: 0 0 220px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.envValue {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container deploy (max-width: 900px) {
+  .rail {
+    width: 200px;
+    padding: 20px 14px;
+  }
+}
+
+/* Sidebar open on smaller screens: drop the step rail (the step header in the
+   main panel still shows where the user is). */
+@container deploy (max-width: 720px) {
+  .rail {
+    display: none;
+  }
+  .envKey {
+    flex: 1 1 100%;
+  }
+  .envValue {
+    flex: 1 1 100%;
+  }
+}

@@ -94,13 +94,9 @@ export function BlueprintReview({
     }
   };
 
-  const isBlocked = blueprint.readinessScore < 80;
+  const isBlocked = false;
 
   const handleApprove = () => {
-    if (blueprint.readinessScore < 80 && !showScoreWarning) {
-      setShowScoreWarning(true);
-      return;
-    }
     onApprove(blueprint);
   };
 
@@ -296,7 +292,7 @@ export function BlueprintReview({
                     <Database size={14} className="sf-blue" style={{ marginRight: 10 }} />
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{ent.name}</span>
                     <span className="sf-grow" />
-                    <span className="mono sf-faint" style={{ fontSize: 11 }}>table: {ent.table}</span>
+                    <span className="mono sf-faint" style={{ fontSize: 11 }}>table: {ent.tableName}</span>
                     {expandedItem === ent.name ? <ChevronDown size={14} style={{ marginLeft: 10 }} /> : <ChevronRight size={14} style={{ marginLeft: 10 }} />}
                   </div>
                   {expandedItem === ent.name && (
@@ -336,6 +332,8 @@ export function BlueprintReview({
                               <td className="mono" style={{ padding: '10px 0', fontSize: 12.5, color: 'var(--sf-blue)' }}>{f.type}</td>
                               <td style={{ padding: '10px 0', fontSize: 11 }}>
                                 {f.isPrimary && <span className="sf-chip sf-chip--sm" style={{ marginRight: 4, borderColor: 'var(--sf-amber)', color: 'var(--sf-amber)' }}>PK</span>}
+                                {!f.isNullable && <span className="sf-chip sf-chip--sm" style={{ marginRight: 4, borderColor: 'var(--sf-text)', color: 'var(--sf-text)' }}>NOT NULL</span>}
+                                {f.isUnique && <span className="sf-chip sf-chip--sm" style={{ marginRight: 4, borderColor: 'var(--sf-green)', color: 'var(--sf-green)' }}>UNIQUE</span>}
                                 {f.references && <span className="sf-chip sf-chip--sm" style={{ color: 'var(--sf-purple)', borderColor: 'var(--sf-purple)' }}>FK: {f.references}</span>}
                               </td>
                             </tr>

@@ -1,0 +1,48 @@
+/* Responsive dashboard grids. Container queries (not viewport) so the layout
+   reacts to the content area shrinking when the app sidebar opens. */
+
+.main {
+  container-type: inline-size;
+  container-name: dash;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.projectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+}
+
+@container dash (max-width: 1100px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .projectGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container dash (max-width: 680px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+  .projectGrid {
+    grid-template-columns: 1fr;
+  }
+}

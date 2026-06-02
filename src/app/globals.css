@@ -255,6 +255,9 @@ button, input, textarea {
 
 .sf-row { display: flex; align-items: center; }
 .sf-col { display: flex; flex-direction: column; }
+/* Centers content on both axes — used by empty states, status panels and
+   circular badges. Defined after sf-row/sf-col so it wins on alignment. */
+.sf-center { display: flex; align-items: center; justify-content: center; text-align: center; }
 .sf-grow { flex: 1 1 auto; min-width: 0; }
 .sf-divider { height: 1px; background: var(--sf-border); }
 .sf-vdivider { width: 1px; background: var(--sf-border); }

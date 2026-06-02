@@ -1,6 +1,10 @@
-import { GenerationPage } from "@/features/generation";
+"use client";
+
+import { useParams } from "next/navigation";
+import { GenerationIDE } from "@/features/generation";
 
 export default function GenerationRoute() {
-  return <GenerationPage />;
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  return <GenerationIDE projectId={id ?? ""} />;
 }
-

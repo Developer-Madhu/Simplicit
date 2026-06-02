@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
+import { useDisplayName } from "@/features/workspace/api/workspaces";
 import {
   Globe,
   Cloud,
@@ -147,6 +148,7 @@ const layers = [
 ];
 
 export function ArchitecturePage() {
+  const displayName = useDisplayName();
   const [selected, setSelected] = useState("api");
   const [layer, setLayer] = useState("services");
 
@@ -334,7 +336,7 @@ export function ArchitecturePage() {
   return (
     <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
       <AppTopbar
-        breadcrumbs={["Acme Studio", "Examly API", "Architecture"]}
+        breadcrumbs={[displayName, "Examly API", "Architecture"]}
         actions={
           <div className="sf-row" style={{ gap: 8 }}>
             <button className="sf-btn sf-btn--sm">

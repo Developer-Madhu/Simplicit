@@ -12,7 +12,7 @@ import { useWorkspace } from "@/features/workspace/context/workspace-context";
 const nav = [
   { key: "workspace", label: "Workspace", href: "/workspace", icon: "Sparkle", shortcut: "W" },
   { key: "projects", label: "Projects", href: "/dashboard", icon: "Folder", shortcut: "P" },
-  { key: "generations", label: "Generations", href: "/generations/demo", icon: "Layers", shortcut: "G" },
+  { key: "generations", label: "Generations", href: "/generations", icon: "Layers", shortcut: "G" },
   { key: "templates", label: "Templates", href: "/templates", icon: "Cube", shortcut: "T" },
   { key: "deployments", label: "Deployments", href: "/deployments", icon: "Rocket", shortcut: "D" }
 ];
@@ -72,7 +72,7 @@ export function AppSidebar({ forceExpanded = false }: AppSidebarProps) {
           router.push("/dashboard");
           break;
         case "g":
-          router.push("/generations/demo");
+          router.push("/generations");
           break;
         case "t":
           router.push("/templates");
@@ -215,6 +215,7 @@ export function AppSidebar({ forceExpanded = false }: AppSidebarProps) {
                   textAlign: 'left', fontFamily: 'inherit',
                 }} 
                 type="button"
+                onMouseEnter={() => router.prefetch(`/generations/${p.id}`)}
                 onClick={() => router.push(`/generations/${p.id}`)}
               >
                 <span className={`sf-dot sf-dot--${p.dot || 'gray'}`} />

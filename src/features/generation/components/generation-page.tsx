@@ -3,6 +3,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useProject } from "@/features/dashboard";
+import { useWorkspace } from "@/features/workspace/context/workspace-context";
+import styles from "./generation-page.module.css";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/features/auth/context/toast-context";
 import { Dialog } from "@/components/ui/dialog";
@@ -900,6 +902,7 @@ export function GenerationPage() {
   const { data: project, isLoading, error: fetchError } = useProject(projectId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeWorkspace, profile } = useWorkspace();
 
   const isDemo = projectId === "demo";
 
@@ -1073,17 +1076,23 @@ export function GenerationPage() {
     setExportStage("Compiling database schema and API definitions...");
 
     const fileMap = generateProjectFiles(activeProject as any);
+    
+    if (Object.keys(fileMap).length === 0) {
+      toast("No project files found for export.", "error");
+      setExportDialogOpen(false);
+      return;
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 700));
     setExportProgress(80);
-    setExportStage("Writing README documentation and environment templates...");
+    setExportStage("Writing documentation and configuration...");
 
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
 
     // Add files to zip
     Object.entries(fileMap).forEach(([filePath, content]) => {
-      zip.file(filePath, content);
+      zip.file(filePath, content as string);
     });
 
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -1268,10 +1277,20 @@ export function GenerationPage() {
 
   const isPending = isLoading || isRegenerating;
 
+  // Real project metadata (no mock values)
+  const workspaceName = activeWorkspace?.name || "Workspace";
+  const authorName = profile?.full_name || "You";
+  const statusLabel =
+    activeProject.status === "deployed"
+      ? "Generated"
+      : activeProject.status.charAt(0).toUpperCase() + activeProject.status.slice(1);
+  const shortId =
+    activeProject.id && activeProject.id !== "demo" ? activeProject.id.slice(0, 8) : "demo";
+
   return (
-    <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
+    <div className={`sf-app ${styles.root}`} style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
       <AppTopbar
-        breadcrumbs={["Acme Studio", "Projects", activeProject.name, "Generation #042"]}
+        breadcrumbs={[workspaceName, "Projects", activeProject.name]}
         actions={
           <div className="sf-row" style={{ gap: 8 }}>
             <button 
@@ -1310,28 +1329,28 @@ export function GenerationPage() {
 
       {/* Page header */}
       <div style={{ padding: "20px 28px 0", borderBottom: "1px solid var(--sf-border)", background: "var(--sf-bg)" }}>
-        <div className="sf-row" style={{ marginBottom: 14, alignItems: "center" }}>
-          <div>
-            <div className="sf-row" style={{ gap: 8, marginBottom: 4, alignItems: "center" }}>
-              <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", margin: 0, color: "var(--sf-text)" }}>
+        <div className={styles.pageHeaderRow}>
+          <div style={{ minWidth: 0 }}>
+            <div className="sf-row" style={{ gap: 8, marginBottom: 4, alignItems: "center", flexWrap: "wrap" }}>
+              <h1 className={styles.title}>
                 {activeProject.name}
               </h1>
               <span className="sf-chip">
-                <span className={`sf-dot sf-dot--${activeProject.dot}`} style={{ marginRight: 6 }} /> Generated · 6.4s
+                <span className={`sf-dot sf-dot--${activeProject.dot}`} style={{ marginRight: 6 }} /> {statusLabel}
               </span>
-              <span className="sf-chip sf-chip-mono">v1 · 042</span>
+              <span className="sf-chip sf-chip-mono">#{shortId}</span>
             </div>
             <p className="sf-muted" style={{ fontSize: 13, margin: 0, maxWidth: 760, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--sf-text-muted)" }}>
               &quot;{activeProject.prompt}&quot;
             </p>
           </div>
           <span className="sf-grow" />
-          <div className="sf-row" style={{ gap: 16, fontSize: 12, color: "var(--sf-text-muted)" }}>
+          <div className={styles.headerMeta}>
             <span>
               <span className="sf-faint">Stack</span> · <span className="mono">{activeProject.stack}</span>
             </span>
             <span>
-              <span className="sf-faint">By</span> · Alex Chen
+              <span className="sf-faint">By</span> · {authorName}
             </span>
             <span>
               <span className="sf-faint">Updated</span> · {activeProject.updated}
@@ -1420,12 +1439,12 @@ export function GenerationPage() {
 
       {/* Body */}
       <main className="sf-grow sf-scroll" style={{ overflowY: "auto", minHeight: 0 }}>
-        {tab === "overview" && <OverviewTab project={activeProject} isLoading={isPending} />}
+        {tab === "overview" && <OverviewTab project={activeProject} isLoading={isPending} isDemo={isDemo} />}
         {tab === "arch" && <ArchTab project={activeProject} isLoading={isPending} />}
         {tab === "schema" && <SchemaTabContent project={activeProject} isLoading={isPending} />}
         {tab === "routes" && <RoutesTabContent project={activeProject} isLoading={isPending} />}
-        {tab === "auth" && <AuthTabContent project={activeProject} isLoading={isPending} />}
-        {tab === "env" && <EnvTabContent project={activeProject} />}
+        {tab === "auth" && <AuthTabContent project={activeProject} isLoading={isPending} isDemo={isDemo} />}
+        {tab === "env" && <EnvTabContent project={activeProject} isDemo={isDemo} />}
         {tab === "deploy" && <DeployHint />}
       </main>
 
@@ -1610,32 +1629,133 @@ export function GenerationPage() {
   );
 }
 
-function OverviewTab({ project, isLoading }: { project?: any, isLoading?: boolean }) {
+/**
+ * Normalizes a project's stored generation_metadata into display data.
+ * Reads the flat GenerationMetadata first (written by the pipeline), then
+ * falls back to the rich `blueprint` object written at project creation,
+ * then to empty arrays. This surfaces the user's real project data
+ * regardless of which write last touched the row — no fabricated values.
+ */
+function deriveGenerationView(project: any) {
+  const meta = project?.generation_metadata ?? {};
+  const bp = meta.blueprint ?? meta?.specification?.blueprint ?? null;
+  const accents = ["blue", "purple", "green", "amber"] as const;
+
+  const modules = meta.modules?.length
+    ? meta.modules
+    : (bp?.modules ?? []).map((m: any, i: number) => ({
+        id: String(m.name ?? `module-${i}`).toLowerCase(),
+        name: m.name,
+        desc: m.description || `Module managing ${(m.entities || []).join(", ")}`,
+        icon: "Layers",
+        status: "ready" as const,
+        files: 0,
+      }));
+
+  const schemaTables = meta.schemaTables?.length
+    ? meta.schemaTables
+    : (bp?.entities ?? []).map((e: any, i: number) => ({
+        name: e.tableName || e.name,
+        columns: (e.fields ?? []).map((f: any) => ({ name: f.name, type: f.type, pk: !!f.isPrimary, fk: !!f.references })),
+        x: 100 + (i % 3) * 260,
+        y: 80 + Math.floor(i / 3) * 200,
+        accent: accents[i % 4],
+      }));
+
+  const apiRoutes = meta.apiRoutes?.length
+    ? meta.apiRoutes
+    : (bp?.apis ?? []).map((a: any) => ({
+        method: a.method,
+        path: a.path,
+        auth: a.isProtected ? "required" : null,
+        note: a.description,
+        group: a.module,
+      }));
+
+  const stackSummary =
+    meta.stackSummary && Object.keys(meta.stackSummary).length
+      ? meta.stackSummary
+      : bp
+      ? Object.fromEntries(
+          Object.entries({
+            database: bp.infrastructure?.database?.provider,
+            auth: bp.infrastructure?.auth?.provider,
+            storage: bp.infrastructure?.storage?.provider,
+            email: bp.infrastructure?.email?.provider,
+            queue: bp.infrastructure?.queue?.provider,
+          }).filter(([, v]) => v && v !== "Unknown")
+        )
+      : {};
+
+  const summary = meta.architectureSummary || bp?.summary || "";
+
+  const authStrategy =
+    meta.authStrategy ??
+    (bp
+      ? {
+          providers: bp.infrastructure?.auth?.provider || "Custom",
+          sessions: "Session-based",
+          roles: Array.from(new Set((bp.permissions ?? []).map((p: any) => p.role))).join(" · ") || "user",
+          mfa: "None",
+          rateLimit: "Standard",
+        }
+      : null);
+
+  const envVariables = meta.envVariables?.length
+    ? meta.envVariables
+    : (bp?.integrations ?? []).flatMap((ig: any) =>
+        (ig.requiredEnv ?? []).map((k: string) => ({ k, v: "••••", kind: "secret" as const, note: ig.name }))
+      );
+
+  const archNodes = meta.architectureNodes?.length
+    ? meta.architectureNodes
+    : (bp?.entities ?? []).map((e: any, i: number) => ({
+        id: e.name,
+        kind: "entity",
+        title: e.name,
+        subtitle: e.tableName,
+        icon: "Database",
+        accent: accents[i % 4],
+        x: 100 + (i % 3) * 220,
+        y: 120 + Math.floor(i / 3) * 110,
+      }));
+
+  const archEdges = meta.architectureEdges?.length
+    ? meta.architectureEdges
+    : (bp?.entities ?? []).flatMap((e: any) => (e.relationships ?? []).map((r: any) => [e.name, r.target, "owns"]));
+
+  const fileCount = Object.keys(meta.files ?? {}).length || (meta.fileTree?.length ?? 0);
+
+  return { meta, bp, modules, schemaTables, apiRoutes, stackSummary, summary, authStrategy, envVariables, archNodes, archEdges, fileCount };
+}
+
+function OverviewTab({ project, isLoading, isDemo }: { project?: any, isLoading?: boolean, isDemo?: boolean }) {
   if (isLoading) return <SkeletonOverview />;
 
+  const view = deriveGenerationView(project);
   const metadata = project?.generation_metadata;
-  const currentStackSummary = metadata?.stackSummary || {};
-  const currentModules = metadata?.modules || [];
+  const currentStackSummary = view.stackSummary;
+  const currentModules = view.modules;
   
-  const framework = currentStackSummary.framework || "Hono";
+  const framework = currentStackSummary.framework || "NestJS";
   const database = currentStackSummary.database || "PostgreSQL";
-  const cache = currentStackSummary.cache || "Redis";
-  const auth = currentStackSummary.auth || "Lucia";
-  const payments = currentStackSummary.payments || "Stripe";
+  const cache = currentStackSummary.cache || "In-Memory";
+  const auth = currentStackSummary.auth || "Standard";
+  const payments = currentStackSummary.payments || "None";
 
-  const currentSummaryText = metadata?.architectureSummary || 
-    `A modular monolith on ${framework}, fronted by a thin edge layer. ${database} is the primary store; ${cache} handles sessions and rate limits. Background work runs in BullMQ workers. Payments use ${payments} Checkout with signed webhooks. Auth is session-based via ${auth}, with role-gated middleware on every route.`;
+  const demoSummary = `A modular backend on ${framework}. ${database} is the primary store. Background work runs in specialized workers. Auth is session-based via ${auth}, with role-gated middleware on every route.`;
+  const currentSummaryText = view.summary || (isDemo ? demoSummary : "");
 
   return (
-    <div style={{ padding: 28, maxWidth: 1280, margin: "0 auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 22 }}>
+    <div className={styles.overviewWrap}>
+      <div className={styles.overviewGrid}>
         {/* Summary */}
         <div className="sf-card" style={{ padding: 22 }}>
           <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10, color: "var(--sf-text-faint)" }}>
             Architecture summary
           </div>
-          <p style={{ fontSize: 14.5, lineHeight: 1.55, margin: 0, color: "var(--sf-text)" }}>
-            {currentSummaryText}
+          <p style={{ fontSize: 14.5, lineHeight: 1.55, margin: 0, color: currentSummaryText ? "var(--sf-text)" : "var(--sf-text-faint)" }}>
+            {currentSummaryText || "No architecture summary stored for this project yet. Run generation to populate it."}
           </p>
           <div className="sf-row" style={{ gap: 6, marginTop: 18, flexWrap: "wrap" }}>
             {Object.entries(currentStackSummary).map(([k, v]) => (
@@ -1647,23 +1767,28 @@ function OverviewTab({ project, isLoading }: { project?: any, isLoading?: boolea
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
+        <div className={styles.statsGrid}>
+          {(() => {
+            const fileCount = view.fileCount;
+            const tableCount = view.schemaTables.length;
+            const routeCount = view.apiRoutes.length;
+            return [
             { l: "Modules", v: String(currentModules.length), d: `+${currentModules.length}` },
-            { l: "Tables", v: String(metadata?.schemaTables?.length || 0), d: `${metadata?.schemaTables?.length || 0} new` },
-            { l: "Routes", v: String(metadata?.apiRoutes?.length || 0), d: `${metadata?.apiRoutes?.length || 0} new` },
-            { l: "Files", v: String(metadata?.fileTree ? 124 : 0), d: `${metadata?.fileTree ? 124 : 0} · 3.4 MB` }
+            { l: "Tables", v: String(tableCount), d: `${tableCount} new` },
+            { l: "Routes", v: String(routeCount), d: `${routeCount} new` },
+            { l: "Files", v: String(fileCount), d: `${fileCount} generated` }
           ].map((s) => (
             <div key={s.l} className="sf-card" style={{ padding: 16 }}>
               <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8, color: "var(--sf-text-faint)" }}>
                 {s.l}
               </div>
-              <div style={{ fontSize: 26, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--sf-text)" }}>{s.v}</div>
+              <div className={styles.statNum}>{s.v}</div>
               <div className="sf-faint" style={{ fontSize: 11.5, marginTop: 4, color: "var(--sf-text-faint)" }}>
                 {s.d}
               </div>
             </div>
-          ))}
+          ));
+          })()}
         </div>
       </div>
 
@@ -1677,7 +1802,7 @@ function OverviewTab({ project, isLoading }: { project?: any, isLoading?: boolea
           Reorder
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+      <div className={styles.modulesGrid}>
         {currentModules.map((m: any) => {
           const Ic = Icons[m.icon as keyof typeof Icons] || Icons.Server;
           return (
@@ -1757,9 +1882,9 @@ function OverviewTab({ project, isLoading }: { project?: any, isLoading?: boolea
 function ArchTab({ project, isLoading }: { project?: any, isLoading?: boolean }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  const metadata = project?.generation_metadata;
-  const currentNodes = metadata?.architectureNodes || [];
-  const currentEdges = metadata?.architectureEdges || [];
+  const view = deriveGenerationView(project);
+  const currentNodes = view.archNodes;
+  const currentEdges = view.archEdges;
 
   const nodeById = useMemo(
     () => Object.fromEntries(currentNodes.map((n: any) => [n.id, n])),
@@ -1786,6 +1911,17 @@ function ArchTab({ project, isLoading }: { project?: any, isLoading?: boolean })
   };
 
   if (isLoading) return <SkeletonArch />;
+
+  if (currentNodes.length === 0) {
+    return (
+      <div className={styles.overviewWrap}>
+        <div className="sf-card sf-col sf-center" style={{ minHeight: 320, gap: 8, color: "var(--sf-text-faint)" }}>
+          <Icons.Layers3 size={22} />
+          <span style={{ fontSize: 13 }}>No architecture graph stored for this project yet.</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 28, maxWidth: 1280, margin: "0 auto" }} onClick={handleCanvasClick}>
@@ -2160,8 +2296,15 @@ function SchemaTabContent({ project, isLoading }: { project?: any, isLoading?: b
   const [panelOpen, setPanelOpen] = useState(true);
 
   const metadata = project?.generation_metadata;
-  const currentTables = metadata?.schemaTables || [];
-  const currentCode = metadata?.schemaCode || [];
+  const view = deriveGenerationView(project);
+  const currentTables = view.schemaTables;
+
+  const currentCode = useMemo(() => {
+    if (metadata?.files?.["src/db/schema.ts"]) {
+        return [metadata.files["src/db/schema.ts"]];
+    }
+    return metadata?.schemaCode || [];
+  }, [metadata]);
 
   const highlightedCode = useMemo(() => highlightTypeScript(currentCode), [currentCode]);
 
@@ -2353,10 +2496,20 @@ function RoutesTabContent({ project, isLoading }: { project?: any, isLoading?: b
   const [rightOpen, setRightOpen] = useState(true);
 
   const metadata = project?.generation_metadata;
+  const view = deriveGenerationView(project);
   const currentTree = metadata?.fileTree || [];
-  const currentCode = metadata?.routeCode || [];
-  const currentTables = useMemo(() => metadata?.schemaTables || [], [metadata?.schemaTables]);
-  const currentRoutes = metadata?.apiRoutes || [];
+
+  const currentCode = useMemo(() => {
+      // Find the first route file in the files record if it exists
+      if (metadata?.files) {
+          const routeFile = Object.keys(metadata.files).find(p => p.includes('route.ts') || p.includes('routes.ts'));
+          if (routeFile) return [metadata.files[routeFile]];
+      }
+      return metadata?.routeCode || [];
+  }, [metadata]);
+
+  const currentTables = useMemo(() => view.schemaTables, [view.schemaTables]);
+  const currentRoutes = view.apiRoutes;
 
   const highlightedCode = useMemo(() => highlightTypeScript(currentCode), [currentCode]);
 
@@ -2489,23 +2642,39 @@ function RoutesTabContent({ project, isLoading }: { project?: any, isLoading?: b
   );
 }
 
-function AuthTabContent({ project, isLoading }: { project?: any, isLoading?: boolean }) {
+function AuthTabContent({ project, isLoading, isDemo }: { project?: any, isLoading?: boolean, isDemo?: boolean }) {
   if (isLoading) return <SkeletonAuth />;
 
-  const metadata = project?.generation_metadata;
-  const strategy = metadata?.authStrategy || {
+  const view = deriveGenerationView(project);
+  const demoStrategy = {
     providers: "Email + OAuth (GitHub, Google)",
     sessions: "Lucia Session · Cookie-based rolling",
     roles: "user · admin",
     mfa: "TOTP (opt-in)",
     rateLimit: "60 / min / IP"
   };
+  const strategy = view.authStrategy || (isDemo ? demoStrategy : null);
 
-  const flowSteps = metadata?.authFlowSteps || [
-    { n: 1, t: "Signup / Login", d: "Standard secure authentication flow" },
-    { n: 2, t: "Session creation", d: "Hashed tokens in HTTP-only cookies" },
-    { n: 3, t: "Role Gating", d: "Middleware checks for required permissions" }
-  ];
+  const flowSteps = view.meta?.authFlowSteps?.length
+    ? view.meta.authFlowSteps
+    : (isDemo
+        ? [
+            { n: 1, t: "Signup / Login", d: "Standard secure authentication flow" },
+            { n: 2, t: "Session creation", d: "Hashed tokens in HTTP-only cookies" },
+            { n: 3, t: "Role Gating", d: "Middleware checks for required permissions" }
+          ]
+        : []);
+
+  if (!strategy) {
+    return (
+      <div className={styles.overviewWrap}>
+        <div className="sf-card sf-col sf-center" style={{ minHeight: 280, gap: 8, color: "var(--sf-text-faint)" }}>
+          <Icons.Lock size={20} />
+          <span style={{ fontSize: 13 }}>No authentication strategy stored for this project yet.</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -2584,17 +2753,29 @@ function AuthTabContent({ project, isLoading }: { project?: any, isLoading?: boo
   );
 }
 
-function EnvTabContent({ project }: { project?: any }) {
+function EnvTabContent({ project, isDemo }: { project?: any, isDemo?: boolean }) {
   const [copied, setCopied] = useState(false);
 
-  const metadata = project?.generation_metadata;
-  const currentEnv = metadata?.envVariables || [
+  const view = deriveGenerationView(project);
+  const demoEnv = [
     { k: "DATABASE_URL", v: "postgres://…", kind: "secret", note: "Primary Postgres" },
     { k: "REDIS_URL", v: "redis://…", kind: "secret", note: "Sessions + queues" },
     { k: "AUTH_SECRET", v: "••••••••••••••••", kind: "secret", note: "Session HMAC" },
     { k: "NODE_ENV", v: "production", kind: "public" },
     { k: "PORT", v: "8080", kind: "public" }
   ];
+  const currentEnv = view.envVariables.length ? view.envVariables : (isDemo ? demoEnv : []);
+
+  if (currentEnv.length === 0) {
+    return (
+      <div className={styles.overviewWrap}>
+        <div className="sf-card sf-col sf-center" style={{ minHeight: 280, gap: 8, color: "var(--sf-text-faint)" }}>
+          <Icons.Key size={20} />
+          <span style={{ fontSize: 13 }}>No environment variables stored for this project yet.</span>
+        </div>
+      </div>
+    );
+  }
 
   const handleCopy = () => {
     const text = currentEnv.map((e: any) => `${e.k}=${e.v}`).join("\n");

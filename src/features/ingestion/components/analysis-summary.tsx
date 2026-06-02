@@ -7,6 +7,7 @@ import {
   ChevronRight, CheckCircle2, Search, FileJson, ListTodo, Activity
 } from "lucide-react";
 import type { IngestionResult } from "../types";
+import { ContextReview } from "./context-review";
 
 interface AnalysisSummaryProps {
   result: IngestionResult;
@@ -46,6 +47,51 @@ export function AnalysisSummary({ result, onClear, onReanalyze }: AnalysisSummar
     return { label: "Frontend Reconstruction", value: "High", color: "var(--sf-blue)" };
   };
   const confidence = getConfidence();
+
+  // ── Unified counts: read from AST extraction OR context parser, whichever has data ──
+  const roleCount =
+    (result.metadata.roles?.length ?? 0) > 0
+      ? (result.metadata.roles?.length ?? 0)
+      : (result.simplicitContext?.roles?.length ?? 0);
+
+  const workflowCount =
+    (result.metadata.workflows?.length ?? 0) > 0
+      ? (result.metadata.workflows?.length ?? 0)
+      : (result.simplicitContext?.workflows?.length ?? 0);
+
+  const ruleCount =
+    (result.simplicitContext?.validationRules?.length ?? 0) > 0
+      ? (result.simplicitContext?.validationRules?.length ?? 0)
+      : (result.simplicitContext?.businessRules?.length ?? 0);
+
+  // Filtered integrations — drops markdown noise lines ("### Integration", "Name:", etc.)
+  const cleanIntegrations = (result.simplicitContext?.integrations ?? []).filter(
+    (i) =>
+      i.name &&
+      !i.name.startsWith("#") &&
+      !i.name.toLowerCase().startsWith("integration") &&
+      i.name.length > 2 &&
+      i.name.length < 50
+  );
+  const integrationCount = cleanIntegrations.length;
+
+  const entityCount =
+    (result.metadata.inferredEntities?.length ?? 0) > 0
+      ? (result.metadata.inferredEntities?.length ?? 0)
+      : (result.simplicitContext?.dataModels?.length ?? 0);
+
+  const apiCount =
+    (result.metadata.apiExpectations?.length ?? 0) > 0
+      ? (result.metadata.apiExpectations?.length ?? 0)
+      : (result.simplicitContext?.endpoints?.length ?? 0);
+
+  // High-confidence entities for the "Detected Entities" panel (code-ingestion mode)
+  const strongEntities = (result.metadata.inferredEntities ?? []).filter(
+    (e) =>
+      e.confidence === "Deterministic" ||
+      e.confidence === "Strong evidence" ||
+      e.confidence === "Multi-source confirmation"
+  );
 
   return (
     <div
@@ -158,8 +204,20 @@ export function AnalysisSummary({ result, onClear, onReanalyze }: AnalysisSummar
              <SummaryRow label="AUTHENTICATION" value={result.simplicitContext.auth.provider} sub={result.simplicitContext.auth.loginMethods.join(", ")} />
           )}
 
-          {hasContext && result.simplicitContext && result.simplicitContext.integrations.length > 0 && (
-             <SummaryRow label="INTEGRATIONS" value={result.simplicitContext.integrations.map(i => i.name).join(", ")} />
+          {hasContext && cleanIntegrations.length > 0 && (
+             <div className="sf-col" style={{ gap: 4 }}>
+               <div className="mono" style={{ fontSize: 9, color: "var(--sf-text-faint)", letterSpacing: "0.05em" }}>INTEGRATIONS</div>
+               <div className="sf-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                 {cleanIntegrations.map((integration, idx) => (
+                   <span key={idx} className="sf-chip sf-chip-mono" style={{ height: 20, fontSize: 10 }}>
+                     {integration.name}
+                     {integration.purpose && (
+                       <span className="sf-faint" style={{ marginLeft: 4 }}>· {integration.purpose}</span>
+                     )}
+                   </span>
+                 ))}
+               </div>
+             </div>
           )}
 
           {/* Infrastructure (Context/Combined Mode) */}
@@ -188,25 +246,25 @@ export function AnalysisSummary({ result, onClear, onReanalyze }: AnalysisSummar
             <StatCell
               icon={<Users size={12} />}
               label="Roles"
-              value={String(metadata.roles.length)}
+              value={String(roleCount)}
               sub="Defined"
             />
             <StatCell
               icon={<Activity size={12} />}
               label="Workflows"
-              value={String(metadata.workflows?.length || 0)}
+              value={String(workflowCount)}
               sub="Business"
             />
             <StatCell
               icon={<ListTodo size={12} />}
               label="Rules"
-              value={String(result.simplicitContext?.businessRules.length || 0)}
+              value={String(ruleCount)}
               sub="Functional"
             />
             <StatCell
               icon={<Globe size={12} />}
               label="Integrations"
-              value={String(result.simplicitContext?.integrations.length || 0)}
+              value={String(integrationCount)}
               sub="External"
             />
           </>
@@ -222,13 +280,13 @@ export function AnalysisSummary({ result, onClear, onReanalyze }: AnalysisSummar
             <StatCell
               icon={<Workflow size={12} />}
               label="Workflows"
-              value={String(metadata.workflows?.length || 0)}
+              value={String(workflowCount)}
               sub={`${metadata.crudSystems?.length || 0} CRUD`}
             />
             <StatCell
               icon={<Database size={12} />}
               label="Data Models"
-              value={String(result.simplicitContext?.dataModels.length || metadata.inferredEntities.length)}
+              value={String(entityCount)}
               sub="Relational"
             />
             <StatCell
@@ -265,6 +323,100 @@ export function AnalysisSummary({ result, onClear, onReanalyze }: AnalysisSummar
                 icon={FEATURE_ICONS[integration] ? <Shield size={9} /> : undefined}
               />
             ))}
+          </div>
+        )}
+
+        {/* AST-detected domain intelligence (code-ingestion mode) */}
+        {!isContextMode &&
+          (strongEntities.length > 0 ||
+            (metadata.roles?.length ?? 0) > 0 ||
+            (metadata.apiExpectations?.length ?? 0) > 0) && (
+            <div className="sf-col" style={{ gap: 16 }}>
+              {/* Detected Entities */}
+              {metadata.inferredEntities && metadata.inferredEntities.length > 0 && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: "var(--sf-text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+                    Detected Entities
+                  </div>
+                  <div className="sf-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {strongEntities.slice(0, 12).map((entity, idx) => {
+                      const color =
+                        entity.confidence === "Deterministic"
+                          ? "oklch(0.78 0.16 145)"
+                          : entity.confidence === "Strong evidence"
+                          ? "var(--sf-blue)"
+                          : "var(--sf-text-muted)";
+                      return (
+                        <span key={idx} className="sf-chip sf-chip-mono" style={{ height: 20, fontSize: 10, color }}>
+                          {entity.name}
+                        </span>
+                      );
+                    })}
+                    {strongEntities.length === 0 && (
+                      <span style={{ fontSize: 11, color: "var(--sf-text-faint)" }}>No high-confidence entities detected</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detected Roles */}
+              {metadata.roles && metadata.roles.length > 0 && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: "var(--sf-text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+                    Detected Roles
+                  </div>
+                  <div className="sf-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {metadata.roles.map((role, idx) => (
+                      <span key={idx} className="sf-chip sf-chip-mono" style={{ height: 20, fontSize: 10, color: "var(--sf-purple)" }}>
+                        {role.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Detected API Surface */}
+              {metadata.apiExpectations && metadata.apiExpectations.length > 0 && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: "var(--sf-text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+                    Detected API Surface
+                  </div>
+                  <div className="sf-col" style={{ gap: 4 }}>
+                    {metadata.apiExpectations.slice(0, 8).map((api, idx) => {
+                      const mc =
+                        api.method === "GET"
+                          ? "oklch(0.78 0.16 145)"
+                          : api.method === "POST"
+                          ? "var(--sf-blue)"
+                          : api.method === "PUT" || api.method === "PATCH"
+                          ? "var(--sf-amber)"
+                          : "var(--sf-red)";
+                      return (
+                        <div key={idx} className="sf-row" style={{ gap: 8, fontSize: 11 }}>
+                          <span className="mono" style={{ fontSize: 9, fontWeight: 600, width: 46, textAlign: "center", padding: "2px 4px", borderRadius: 4, background: "var(--sf-bg)", color: mc }}>
+                            {api.method}
+                          </span>
+                          <span className="mono" style={{ color: "var(--sf-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {api.path}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {metadata.apiExpectations.length > 8 && (
+                      <span style={{ fontSize: 11, color: "var(--sf-text-faint)" }}>
+                        +{metadata.apiExpectations.length - 8} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+        {/* Structured specification review (context-ingestion mode) */}
+        {isContextMode && result.simplicitContext && (
+          <div style={{ marginTop: 4 }}>
+            <ContextReview result={result} onConfirm={() => {}} onCancel={onClear} />
           </div>
         )}
 

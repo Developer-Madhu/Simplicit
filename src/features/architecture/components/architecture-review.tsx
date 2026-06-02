@@ -5,45 +5,33 @@ import {
   Check, 
   AlertTriangle, 
   Edit3, 
-  ArrowRight, 
-  Info, 
-  Shield, 
-  Users, 
-  GitBranch, 
-  Database, 
-  Globe, 
+  Info,
+  Users,
+  GitBranch,
+  Shield,
+  Database,
   Cloud,
   Zap,
   Activity,
   Layers
 } from "lucide-react";
-import { IngestionResult } from "@/features/ingestion/types";
-import { ArchitectureReviewState, BackendSpecification } from "../types";
+import { ArchitectureReviewState, BackendSpecification, ResolvedArchitectureState } from "../types";
 import { generateArchitectureReview, calculateReadinessScore, checkGenerationGate, createBackendSpecification } from "../utils";
 
 interface ArchitectureReviewProps {
-  ingestionResult: IngestionResult;
-  answers: Record<string, string | string[]>;
-  prompt: string;
+  resolvedArchitecture: ResolvedArchitectureState;
   onApprove: (spec: BackendSpecification) => void;
   onEdit?: () => void;
 }
 
 export function ArchitectureReview({
-  ingestionResult,
-  answers,
-  prompt,
+  resolvedArchitecture,
   onApprove,
   onEdit
 }: ArchitectureReviewProps) {
-  const initialState = useMemo(() => generateArchitectureReview(ingestionResult, answers, prompt), [ingestionResult, answers, prompt]);
-  const [state, setState] = useState<ArchitectureReviewState>(initialState);
+  // Pure projection from canonical state
+  const state = useMemo(() => generateArchitectureReview(resolvedArchitecture), [resolvedArchitecture]);
 
-  // Runtime assertion for UI consistency validation
-  const renderedEntities = state.entities;
-  if (state.entities.length > 0 && renderedEntities.length === 0) {
-    throw new Error("UI entity desynchronization detected");
-  }
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [showScoreWarning, setShowScoreWarning] = useState(false);
 
@@ -51,13 +39,6 @@ export function ArchitectureReview({
   const gateErrors = useMemo(() => checkGenerationGate(state), [state]);
 
   const handleApprove = () => {
-    if (gateErrors.length > 0) return;
-
-    if (readinessScore < 80 && !showScoreWarning) {
-      setShowScoreWarning(true);
-      return;
-    }
-
     const spec = createBackendSpecification(state);
     onApprove(spec);
   };
@@ -67,15 +48,7 @@ export function ArchitectureReview({
       {icon}
       <span className="sf-h3" style={{ margin: 0, fontSize: 15 }}>{title}</span>
       <span className="sf-grow" />
-      {editable && (
-        <button 
-          onClick={() => setEditingSection(editingSection === sectionId ? null : sectionId)}
-          className="sf-btn sf-btn--ghost sf-btn--sm" 
-          style={{ padding: '0 8px', height: 24, fontSize: 11 }}
-        >
-          <Edit3 size={11} style={{ marginRight: 4 }} /> Edit
-        </button>
-      )}
+      {/* Editing disabled in pure projection mode for this sprint to ensure synchronization */}
     </div>
   );
 
@@ -133,13 +106,13 @@ export function ArchitectureReview({
               Review the inferred system architecture and backend requirements before generation.
             </p>
           </div>
-          <div className="sf-col sf-center" style={{ width: 100, height: 100, borderRadius: 50, border: '4px solid var(--sf-border)', position: 'relative' }}>
-             <div style={{ fontSize: 24, fontWeight: 700, color: readinessScore > 80 ? 'var(--sf-green)' : 'var(--sf-amber)' }}>{readinessScore}%</div>
-             <div className="mono" style={{ fontSize: 9, color: 'var(--sf-text-faint)', textTransform: 'uppercase', marginTop: -2 }}>Readiness</div>
-             <svg style={{ position: 'absolute', inset: -4, width: 108, height: 108, transform: 'rotate(-90deg)' }}>
-                <circle 
-                  cx="54" cy="54" r="50" 
-                  fill="none" stroke="var(--sf-blue)" strokeWidth="4" 
+          <div style={{ width: 100, height: 100, borderRadius: 50, border: '4px solid var(--sf-border)', position: 'relative', flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+             <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: readinessScore > 80 ? 'var(--sf-green)' : 'var(--sf-amber)' }}>{readinessScore}%</div>
+             <div className="mono" style={{ fontSize: 9, color: 'var(--sf-text-faint)', textTransform: 'uppercase', marginTop: 2 }}>Readiness</div>
+             <svg viewBox="0 0 108 108" style={{ position: 'absolute', inset: -4, width: 108, height: 108, transform: 'rotate(-90deg)', overflow: 'visible' }}>
+                <circle
+                  cx="54" cy="54" r="50"
+                  fill="none" stroke="var(--sf-blue)" strokeWidth="4"
                   strokeDasharray={`${(readinessScore / 100) * 314} 314`}
                   style={{ transition: 'stroke-dasharray 0.5s ease' }}
                 />
@@ -190,56 +163,21 @@ export function ArchitectureReview({
 
         {/* Users & Roles */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Users & Roles", <Users size={16} className="sf-green" />, "roles")}
+          {renderSectionHeader("Users & Roles", <Users size={16} className="sf-green" />, "roles", false)}
           <div className="sf-col" style={{ gap: 8 }}>
-            {editingSection === 'roles' ? (
-              <div className="sf-col" style={{ gap: 10 }}>
-                {state.roles.map((role, i) => (
-                  <div key={i} className="sf-row" style={{ gap: 6 }}>
-                    <input 
-                      value={role.name} 
-                      onChange={(e) => {
-                        const next = [...state.roles];
-                        next[i] = { ...next[i], name: e.target.value };
-                        setState({ ...state, roles: next });
-                      }}
-                      className="mono"
-                      style={{ width: 100, background: 'var(--sf-surface)', border: '1px solid var(--sf-border)', borderRadius: 4, padding: '4px 8px', fontSize: 12 }}
-                    />
-                    <input 
-                      value={role.description} 
-                      onChange={(e) => {
-                        const next = [...state.roles];
-                        next[i] = { ...next[i], description: e.target.value };
-                        setState({ ...state, roles: next });
-                      }}
-                      className="sf-grow"
-                      style={{ background: 'var(--sf-surface)', border: '1px solid var(--sf-border)', borderRadius: 4, padding: '4px 8px', fontSize: 12 }}
-                    />
-                  </div>
-                ))}
-                <button 
-                  onClick={() => setState({ ...state, roles: [...state.roles, { name: "New Role", description: "Role description" }] })}
-                  className="sf-btn sf-btn--ghost sf-btn--sm"
-                  style={{ width: 'fit-content' }}
-                >
-                  + Add Role
-                </button>
-              </div>
-            ) : (
-              state.roles.map((role, i) => (
+            {state.roles.map((role, i) => (
                 <div key={i} className="sf-row" style={{ gap: 10, padding: '6px 10px', background: 'var(--sf-surface)', borderRadius: 6, border: '1px solid var(--sf-border)' }}>
                   <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{role.name}</span>
                   <span className="sf-muted" style={{ fontSize: 11 }}>— {role.description}</span>
                 </div>
               ))
-            )}
+            }
           </div>
         </div>
 
-        {/* Business Capabilities (Phase 4) */}
+        {/* Business Capabilities */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Business Capabilities", <GitBranch size={16} className="sf-amber" />, "capabilities")}
+          {renderSectionHeader("Business Capabilities", <GitBranch size={16} className="sf-amber" />, "capabilities", false)}
           <div className="sf-col" style={{ gap: 10 }}>
             {state.capabilities.map((cap, i) => (
               <div key={i} className="sf-col" style={{ padding: '8px 10px', background: 'var(--sf-surface)', borderRadius: 6, border: '1px solid var(--sf-border)', gap: 4 }}>
@@ -260,85 +198,34 @@ export function ArchitectureReview({
 
         {/* Business Rules */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Business Rules", <Shield size={16} className="sf-red" />, "businessRules")}
+          {renderSectionHeader("Business Rules", <Shield size={16} className="sf-red" />, "businessRules", false)}
           <div className="sf-col" style={{ gap: 8 }}>
-            {editingSection === 'businessRules' ? (
-              <div className="sf-col" style={{ gap: 10 }}>
-                {state.businessRules.map((rule, i) => (
-                  <div key={i} className="sf-col" style={{ gap: 4, padding: 8, border: '1px solid var(--sf-border)', borderRadius: 6 }}>
-                    <textarea 
-                      value={rule.rule} 
-                      onChange={(e) => {
-                        const next = [...state.businessRules];
-                        next[i] = { ...next[i], rule: e.target.value };
-                        setState({ ...state, businessRules: next });
-                      }}
-                      style={{ background: 'var(--sf-surface)', border: '1px solid var(--sf-border)', borderRadius: 4, padding: '4px 8px', fontSize: 12, resize: 'none', height: 40 }}
-                    />
-                  </div>
-                ))}
-                <button 
-                  onClick={() => setState({ ...state, businessRules: [...state.businessRules, { id: Math.random().toString(), rule: "New business rule", impact: "high" }] })}
-                  className="sf-btn sf-btn--ghost sf-btn--sm"
-                  style={{ width: 'fit-content' }}
-                >
-                  + Add Rule
-                </button>
-              </div>
-            ) : (
-              state.businessRules.map((rule, i) => (
+            {state.businessRules.map((rule, i) => (
                 <div key={i} className="sf-row" style={{ gap: 10, padding: '6px 10px', background: 'var(--sf-surface)', borderRadius: 6, border: '1px solid var(--sf-border)' }}>
                   <span style={{ fontSize: 12 }}>{rule.rule}</span>
                 </div>
               ))
-            )}
-            {state.businessRules.length === 0 && !editingSection && <span className="sf-muted" style={{ fontSize: 12 }}>No business rules identified.</span>}
+            }
+            {state.businessRules.length === 0 && <span className="sf-muted" style={{ fontSize: 12 }}>No business rules identified.</span>}
           </div>
         </div>
 
         {/* Data Models */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Entities / Data Models", <Database size={16} className="sf-blue" />, "entities")}
+          {renderSectionHeader("Entities / Data Models", <Database size={16} className="sf-blue" />, "entities", false)}
           <div className="sf-row" style={{ flexWrap: 'wrap', gap: 6 }}>
-            {editingSection === 'entities' ? (
-              <div className="sf-col" style={{ gap: 10, width: '100%' }}>
-                <div className="sf-row" style={{ flexWrap: 'wrap', gap: 6 }}>
-                  {state.entities.map((ent, i) => (
-                    <div key={i} className="sf-row" style={{ gap: 4, alignItems: 'center' }}>
-                      <input 
-                        value={ent.name} 
-                        onChange={(e) => {
-                          const next = [...state.entities];
-                          next[i] = { ...next[i], name: e.target.value };
-                          setState({ ...state, entities: next });
-                        }}
-                        style={{ background: 'var(--sf-surface)', border: '1px solid var(--sf-border)', borderRadius: 4, padding: '2px 6px', fontSize: 11, width: 80 }}
-                      />
-                      <button onClick={() => setState({...state, entities: state.entities.filter((_, idx) => idx !== i)})} style={{ background: 'none', border: 'none', color: 'var(--sf-red)', cursor: 'pointer', padding: 0 }}>×</button>
-                    </div>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => setState({ ...state, entities: [...state.entities, { name: "NewEntity", fields: [], relationships: [] }] })}
-                  className="sf-btn sf-btn--ghost sf-btn--sm"
-                  style={{ width: 'fit-content' }}
-                >
-                  + Add Entity
-                </button>
-              </div>
-            ) : (
-              state.entities.map((ent, i) => (
+            {state.entities.map((ent, i) => (
                 <span key={i} className="sf-chip" style={{ fontSize: 11, padding: '4px 8px' }}>
                   {ent.name}
                 </span>
               ))
-            )}
+            }
           </div>
         </div>
 
         {/* Integrations */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Integrations", <Layers size={16} className="sf-purple" />, "integrations")}
+          {renderSectionHeader("Integrations", <Layers size={16} className="sf-purple" />, "integrations", false)}
           <div className="sf-col" style={{ gap: 8 }}>
             {state.integrations.map((int, i) => (
               <div key={i} className="sf-row" style={{ gap: 8, alignItems: 'center' }}>
@@ -352,7 +239,7 @@ export function ArchitectureReview({
 
         {/* Backend Requirements */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Backend Requirements", <Shield size={16} className="sf-red" />, "requirements")}
+          {renderSectionHeader("Backend Requirements", <Shield size={16} className="sf-red" />, "requirements", false)}
           <div className="sf-col" style={{ gap: 8 }}>
             {state.requirements.map((req, i) => (
               <div key={i} className="sf-row" style={{ gap: 10, alignItems: 'center' }}>
@@ -375,7 +262,7 @@ export function ArchitectureReview({
 
         {/* Infrastructure */}
         <div className="sf-card" style={{ padding: 18 }}>
-          {renderSectionHeader("Infrastructure", <Cloud size={16} className="sf-blue" />, "infrastructure")}
+          {renderSectionHeader("Infrastructure", <Cloud size={16} className="sf-blue" />, "infrastructure", false)}
           <div className="sf-col" style={{ gap: 10 }}>
             {[
               { label: "Database", value: state.infrastructure.database },
@@ -391,7 +278,7 @@ export function ArchitectureReview({
         </div>
       </div>
 
-      {/* Architecture Gaps (Phase 8) */}
+      {/* Architecture Gaps */}
       {state.gaps && state.gaps.length > 0 && (
         <div className="sf-card" style={{ padding: 20, border: '1px solid var(--sf-amber-faint)', background: 'rgba(255,180,0,0.03)' }}>
           <div className="sf-row" style={{ gap: 10, marginBottom: 16, alignItems: 'center' }}>
@@ -408,7 +295,6 @@ export function ArchitectureReview({
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{gap.description}</span>
                   <span className="sf-muted" style={{ fontSize: 11 }}>Impact: {gap.impact}</span>
                 </div>
-                <button className="sf-btn sf-btn--ghost sf-btn--sm" style={{ padding: '0 10px', height: 26, fontSize: 11 }}>Resolve</button>
               </div>
             ))}
           </div>
@@ -426,7 +312,6 @@ export function ArchitectureReview({
             {gateErrors.map((err, i) => (
               <div key={i} className="sf-row" style={{ gap: 10, alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: 'var(--sf-text)' }}>{err}</span>
-                <button className="sf-btn sf-btn--ghost sf-btn--sm" style={{ fontSize: 11, padding: '0 8px', height: 22, color: 'var(--sf-blue)' }}>Quick Edit</button>
               </div>
             ))}
           </div>
@@ -444,7 +329,6 @@ export function ArchitectureReview({
         </button>
         <button 
           onClick={handleApprove}
-          disabled={gateErrors.length > 0}
           className="sf-btn sf-btn--primary" 
           style={{ padding: '0 24px', height: 40, gap: 8 }}
         >
@@ -454,5 +338,23 @@ export function ArchitectureReview({
         </button>
       </div>
     </div>
+  );
+}
+
+function ArrowRight({ size, style }: { size?: number, style?: any }) {
+  return (
+    <svg 
+      width={size || 16} 
+      height={size || 16} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      style={style}
+    >
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
   );
 }

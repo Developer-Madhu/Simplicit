@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Icons } from "@/components/ui/icons";
 import { useShell } from "../context/shell-context";
 import { useAuth } from "@/features/auth/context/auth-context";
+import { useProfile } from "@/features/workspace/api/workspaces";
+import styles from "./app-topbar.module.css";
 
 interface AppTopbarProps {
   breadcrumbs?: string[];
@@ -20,14 +22,21 @@ export function AppTopbar({
   const router = useRouter();
   const { setCommandPaletteOpen, userDropdownOpen, toggleUserDropdown, setUserDropdownOpen } = useShell();
   const { user, signOut } = useAuth();
+  const { data: profile } = useProfile();
 
-  // Dynamic user profile initials
-  const initials = user
-    ? (
-        (user.user_metadata?.first_name?.[0] || "") + 
-        (user.user_metadata?.last_name?.[0] || "")
-      ).toUpperCase() || user.email?.[0]?.toUpperCase() || "JD"
-    : "JD";
+  // Display name reflects the saved Profile, falling back to auth metadata/email.
+  const displayName =
+    profile?.full_name?.trim() ||
+    `${user?.user_metadata?.first_name || ""} ${user?.user_metadata?.last_name || ""}`.trim() ||
+    user?.email?.split("@")[0] ||
+    "";
+
+  // Dynamic user profile initials (derived from the display name)
+  const initials =
+    (displayName
+      ? displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("")
+      : user?.email?.[0] || "U"
+    ).toUpperCase() || "U";
 
   const handleSignOut = async () => {
     setUserDropdownOpen(false);
@@ -43,7 +52,7 @@ export function AppTopbar({
 
   return (
     <div
-      className="sf-row"
+      className={`sf-row ${styles.topbar}`}
       style={{
         height: 48,
         padding: '0 16px',
@@ -54,36 +63,39 @@ export function AppTopbar({
         position: "relative",
       }}
     >
-      <div className="sf-row" style={{ gap: 6, fontSize: 13 }}>
-        {breadcrumbs.map((b, i) => (
-          <span key={i} className="sf-row" style={{ gap: 6 }}>
-            {i > 0 && <span className="sf-faint" style={{ fontSize: 12 }}>/</span>}
-            <span style={{ color: i === breadcrumbs.length - 1 ? 'var(--sf-text)' : 'var(--sf-text-muted)' }}>{b}</span>
-          </span>
-        ))}
+      <div className={styles.breadcrumbs}>
+        {breadcrumbs.map((b, i) => {
+          const isLast = i === breadcrumbs.length - 1;
+          return (
+            <span key={i} className={`${styles.crumb} ${!isLast ? styles.crumbHidable : ""}`}>
+              {i > 0 && <span className="sf-faint" style={{ fontSize: 12 }}>/</span>}
+              <span className={isLast ? styles.crumbText : undefined} style={{ color: isLast ? 'var(--sf-text)' : 'var(--sf-text-muted)' }}>{b}</span>
+            </span>
+          );
+        })}
       </div>
       <span className="sf-grow" />
       
       {withSearch && (
         <button
-          className="sf-row"
+          className={`sf-row ${styles.search}`}
           style={{
             gap: 8, padding: '0 10px', height: 30,
             background: 'var(--sf-surface)', border: '1px solid var(--sf-border)',
             borderRadius: 8, color: 'var(--sf-text-dim)', fontSize: 12.5,
             cursor: 'pointer', fontFamily: 'inherit',
-            minWidth: 220,
+            width: 220, maxWidth: '32cqw',
           }}
           onClick={() => setCommandPaletteOpen(true)}
           type="button"
         >
           <Icons.Search size={13} />
-          <span className="sf-grow" style={{ textAlign: 'left' }}>Search or run command…</span>
+          <span className={`sf-grow ${styles.searchLabel}`}>Search or run command…</span>
           <span className="sf-kbd">⌘K</span>
         </button>
       )}
 
-      {actions}
+      {actions && <div className={styles.actions}>{actions}</div>}
       
       <button
         className="sf-btn sf-btn--ghost sf-btn--sm"
@@ -131,7 +143,7 @@ export function AppTopbar({
               {/* Account header info */}
               <div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--sf-border)" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--sf-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {user?.user_metadata?.first_name ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ""}` : "Simplicit Developer"}
+                  {displayName || "Simplicit Developer"}
                 </div>
                 <div className="sf-faint" style={{ fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user?.email || "personal@account.dev"}

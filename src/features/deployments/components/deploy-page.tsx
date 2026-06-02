@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 
 import { AppTopbar } from "@/features/shell";
+import { useDisplayName } from "@/features/workspace/api/workspaces";
+import styles from "./deploy-page.module.css";
 
 const Icons = {
   Check,
@@ -94,11 +96,12 @@ const STEPS = [
 
 export function DeployPage() {
   const [step, setStep] = useState(2);
+  const displayName = useDisplayName();
 
   return (
-    <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
+    <div className={`sf-app ${styles.root}`} style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
       <AppTopbar
-        breadcrumbs={["Acme Studio", "Examly API", "Deploy"]}
+        breadcrumbs={[displayName, "Examly API", "Deploy"]}
         actions={
           <button className="sf-btn sf-btn--sm" onClick={() => setStep(1)}>
             <Icons.X size={11} /> Cancel
@@ -106,17 +109,9 @@ export function DeployPage() {
         }
       />
 
-      <div className="sf-row sf-grow" style={{ minHeight: 0 }}>
+      <div className={`sf-grow ${styles.body}`}>
         {/* Step rail */}
-        <aside
-          style={{
-            width: 280,
-            flex: "0 0 auto",
-            borderRight: "1px solid var(--sf-border)",
-            background: "var(--sf-bg-2)",
-            padding: "28px 20px"
-          }}
-        >
+        <aside className={styles.rail}>
           <span className="mono" style={{ fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--sf-text-faint)" }}>
             Deployment wizard
           </span>
@@ -313,21 +308,18 @@ function EnvStep() {
         {rows.map((r, i) => (
           <div
             key={r.k}
-            className="sf-row"
+            className={styles.envRow}
             style={{
               padding: "12px 16px",
               borderBottom: i < rows.length - 1 ? "1px solid var(--sf-border)" : "none",
-              gap: 10,
-              alignItems: "center"
             }}
           >
-            <span className="mono" style={{ flex: "0 0 220px", fontSize: 12, color: "var(--sf-text)" }}>
+            <span className={`mono ${styles.envKey}`} style={{ fontSize: 12, color: "var(--sf-text)" }}>
               {r.k}
             </span>
             <span
-              className="mono"
+              className={`mono ${styles.envValue}`}
               style={{
-                flex: 1,
                 fontSize: 11.5,
                 color: r.status === "missing" ? "var(--sf-red)" : "var(--sf-text-muted)"
               }}

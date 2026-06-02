@@ -314,7 +314,7 @@ export class DomainIntelligenceEngine {
           table: this.pluralize(name.toLowerCase()),
           type: finalType,
           description: `Reconstructed domain entity representing ${name}`,
-          fields: this.inferFields(data.evidence),
+          fields: this.inferFields(name, data.evidence),
           relationships: [],
           indexes: ["id"],
           constraints: [],
@@ -417,11 +417,130 @@ export class DomainIntelligenceEngine {
     };
   }
 
-  private inferFields(evidence: StructuredEvidence[]): any[] {
-    return [
-      { name: "id", type: "uuid", isPrimary: true, evidence: [] },
-      { name: "created_at", type: "timestamp", evidence: [] }
-    ];
+  private inferFields(entityName: string, evidence: StructuredEvidence[]): any[] {
+    const fields = new Map<string, any>();
+
+    // Rule: Foundation Fields
+    fields.set("id", { name: "id", type: "uuid", isPrimary: true, isNullable: false, evidence: [] });
+    fields.set("created_at", { name: "created_at", type: "timestamp", isPrimary: false, isNullable: false, evidence: [] });
+
+    evidence.forEach(sig => {
+      if (!sig.filePath) return;
+      const content = this.result.keyFiles.get(sig.filePath);
+      if (!content) return;
+
+      // 1. Extract from TypeScript Interfaces/Types
+      this.extractFieldsFromTypes(entityName, content, sig, fields);
+
+      // 2. Extract from Zod Schemas
+      this.extractFieldsFromZod(entityName, content, sig, fields);
+
+      // 3. Extract from React Forms
+      this.extractFieldsFromForms(entityName, content, sig, fields);
+      
+      // 4. Extract from API Payloads
+      this.extractFieldsFromAPIs(entityName, content, sig, fields);
+    });
+
+    return Array.from(fields.values());
+  }
+
+  private extractFieldsFromTypes(entityName: string, content: string, sig: StructuredEvidence, fields: Map<string, any>) {
+    const typeRegex = new RegExp(`(?:interface|type)\\s+${entityName}\\s*(?:=|{)([\\s\\S]*?)}`, 'g');
+    let match;
+    while ((match = typeRegex.exec(content)) !== null) {
+      const body = match[1];
+      const fieldLines = body.split('\n');
+      fieldLines.forEach(line => {
+        const fieldMatch = line.trim().match(/^(\w+)(\?)?:\s*([^;,\n]+)/);
+        if (fieldMatch) {
+          const name = fieldMatch[1];
+          const isOptional = !!fieldMatch[2];
+          const type = this.mapToDbType(fieldMatch[3]);
+          
+          if (!fields.has(name) || fields.get(name).type === 'text') {
+             fields.set(name, {
+               name,
+               type,
+               isNullable: isOptional,
+               evidence: [sig]
+             });
+          }
+        }
+      });
+    }
+  }
+
+  private extractFieldsFromZod(entityName: string, content: string, sig: StructuredEvidence, fields: Map<string, any>) {
+    const zodRegex = new RegExp(`(?:const|let|var)\\s+(\\w*${entityName}\\w*)\\s*=\\s*z\\.object\\s*\\({([\\s\\S]*?)}\\)`, 'gi');
+    let match;
+    while ((match = zodRegex.exec(content)) !== null) {
+      const body = match[2];
+      const fieldLines = body.split('\n');
+      fieldLines.forEach(line => {
+        const fieldMatch = line.trim().match(/^(\w+):\s*z\.(\w+)\(\)/);
+        if (fieldMatch) {
+          const name = fieldMatch[1];
+          const type = this.mapToDbType(fieldMatch[2]);
+          const isOptional = line.includes('.optional()') || line.includes('.nullable()');
+          
+          if (!fields.has(name)) {
+            fields.set(name, {
+              name,
+              type,
+              isNullable: isOptional,
+              evidence: [sig]
+            });
+          }
+        }
+      });
+    }
+  }
+
+  private extractFieldsFromForms(entityName: string, content: string, sig: StructuredEvidence, fields: Map<string, any>) {
+    // Look for name attributes in inputs
+    const nameRegex = /name=["'](\w+)["']/g;
+    let match;
+    while ((match = nameRegex.exec(content)) !== null) {
+      const name = match[1];
+      if (!fields.has(name)) {
+        fields.set(name, {
+          name,
+          type: 'text', // Default to text for form fields if type unknown
+          isNullable: true,
+          evidence: [sig]
+        });
+      }
+    }
+  }
+
+  private extractFieldsFromAPIs(entityName: string, content: string, sig: StructuredEvidence, fields: Map<string, any>) {
+    // Look for property assignments in object literals that might be entity-related
+    if (content.toLowerCase().includes(entityName.toLowerCase())) {
+        const assignmentRegex = /(\w+):\s*[\w.]+(?=[,}])/g;
+        let match;
+        while ((match = assignmentRegex.exec(content)) !== null) {
+            const name = match[1];
+            if (!fields.has(name) && name !== 'id') {
+                fields.set(name, {
+                    name,
+                    type: 'text',
+                    isNullable: true,
+                    evidence: [sig]
+                });
+            }
+        }
+    }
+  }
+
+  private mapToDbType(tsType: string): string {
+    const type = tsType.toLowerCase().trim();
+    if (type.includes("string")) return "varchar";
+    if (type.includes("number")) return "integer";
+    if (type.includes("boolean")) return "boolean";
+    if (type.includes("date") || type.includes("timestamp")) return "timestamp";
+    if (type.includes("[]") || type.includes("array") || type.includes("object")) return "jsonb";
+    return "text";
   }
 
   private synthesizeModules(entities: DomainEntity[], workflows: DomainWorkflow[], capabilities: BusinessCapability[]): BoundedContext[] {

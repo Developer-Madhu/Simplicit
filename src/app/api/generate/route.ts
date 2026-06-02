@@ -1,6 +1,29 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GenerationPipeline } from "@/features/generation/api/pipeline";
+import { sanitizePrompt } from "@/lib/prompt-sanitizer";
+
+// Simple in-memory per-user rate limiting.
+// TODO: replace with Redis rate limiting for production (module Maps don't
+// persist/coordinate across serverless instances).
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10; // max requests
+const RATE_WINDOW_MS = 60000; // per 60 seconds
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true; // allowed
+  }
+  if (entry.count >= RATE_LIMIT) {
+    return false; // blocked
+  }
+  entry.count++;
+  return true; // allowed
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,14 +36,32 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Per-user rate limiting (defense against credit-burning loops/abuse)
+    if (!checkRateLimit(user.id)) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please wait a moment before generating again." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const body = await req.json();
-    const { projectId, prompt, stack, localMode, context } = body;
+    const { projectId, prompt, stack, localMode, context, blueprint } = body;
     if (!projectId || !prompt || !stack) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    // Server-side prompt sanitization (defense in depth — the client can be bypassed)
+    const sanitized = sanitizePrompt(prompt);
+    if (sanitized.blocked) {
+      return new Response(JSON.stringify({ error: sanitized.reason }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const safePrompt = sanitized.clean;
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -40,7 +81,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          await GenerationPipeline.execute(projectId, prompt, stack, !!localMode, (update) => {
+          await GenerationPipeline.execute(projectId, safePrompt, stack, !!localMode, blueprint, (update) => {
             const dataStr = `data: ${JSON.stringify(update)}\n\n`;
             controller.enqueue(encoder.encode(dataStr));
           });

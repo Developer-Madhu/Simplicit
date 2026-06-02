@@ -1,0 +1,66 @@
+/* Responsive top navbar. Container queries (not viewport) so the bar reacts
+   to the content area shrinking when the sidebar opens — viewport width is
+   unchanged in that case. */
+
+.topbar {
+  container-type: inline-size;
+  container-name: topbar;
+}
+
+/* Breadcrumbs absorb the squeeze: they shrink and ellipsize instead of
+   wrapping mid-word. */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.crumbText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+/* Search box: may shrink, then hide on narrow. */
+.search {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.searchLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* Action buttons never wrap their labels and never shrink. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@container topbar (max-width: 900px) {
+  .search {
+    display: none;
+  }
+}
+
+/* Very narrow (sidebar open on smaller screens): keep only the last crumb. */
+@container topbar (max-width: 600px) {
+  .crumbHidable {
+    display: none;
+  }
+}

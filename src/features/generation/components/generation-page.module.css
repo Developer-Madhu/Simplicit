@@ -1,0 +1,117 @@
+/* Responsive layout for the tabbed Generation detail page.
+   Uses CSS container queries (not viewport media queries) so the layout
+   reacts to the content area shrinking when the app sidebar opens —
+   the viewport width is unchanged in that case, only this container shrinks. */
+
+.root {
+  container-type: inline-size;
+  container-name: genpage;
+}
+
+/* Page header row: title block + meta block, wraps cleanly when narrow */
+.pageHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--sf-text-muted);
+}
+/* keep each metric ("Stack · Hono · PG · Redis", "By · …") intact instead of
+   breaking mid-word */
+.headerMeta > span {
+  white-space: nowrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--sf-text);
+}
+
+/* Overview tab layout */
+.overviewWrap {
+  padding: 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modulesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.statNum {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--sf-text);
+}
+
+/* ── Container-query breakpoints (relative to the content area width) ── */
+@container genpage (max-width: 1024px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+  .modulesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .title {
+    font-size: 20px;
+  }
+  .statNum {
+    font-size: 23px;
+  }
+}
+
+@container genpage (max-width: 760px) {
+  .overviewWrap {
+    padding: 18px;
+  }
+  .modulesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .headerMeta {
+    gap: 10px;
+    font-size: 11.5px;
+  }
+  .title {
+    font-size: 19px;
+  }
+  .statNum {
+    font-size: 22px;
+  }
+}
+
+@container genpage (max-width: 520px) {
+  .modulesGrid {
+    grid-template-columns: 1fr;
+  }
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

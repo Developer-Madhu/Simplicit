@@ -1,6 +1,7 @@
 "use client";
 
 import { Code2, FileText, Github, ShieldCheck, type LucideIcon } from "lucide-react";
+import { useDisplayName } from "@/features/workspace/api/workspaces";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,10 +31,11 @@ const docsSections: Array<{
 ];
 
 export function DocsPage() {
+  const displayName = useDisplayName();
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <AppTopbar
-        breadcrumbs={["Acme Studio", "Documentation"]}
+        breadcrumbs={[displayName, "Documentation"]}
         actions={
           <Button size="sm">
             <Github className="h-4 w-4" />

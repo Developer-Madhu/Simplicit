@@ -1,0 +1,1337 @@
+{
+  "D:\\Projects\\Codex\\Simplicit\\.eslintrc.json": {
+    "mtime": 1779727340.3274121,
+    "ast_hash": "66ac385fc32c06b7c41524c3968981a3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\entity-trace-report.json": {
+    "mtime": 1779995655.1893559,
+    "ast_hash": "9fb7abcd02e43d645861bb48eb2713e1",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\next-env.d.ts": {
+    "mtime": 1779727542.9392993,
+    "ast_hash": "ba64ff7d54714a8f64db89b1003207d8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\next.config.ts": {
+    "mtime": 1779727607.1173642,
+    "ast_hash": "daad32b4de0b92afe04301ebf0a6cc76",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\package.json": {
+    "mtime": 1779963721.328678,
+    "ast_hash": "8c594aff8111010ecf960a4b1fac3120",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\postcss.config.js": {
+    "mtime": 1779727339.997977,
+    "ast_hash": "9dabeedb980183b2c396602895b83775",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\skills-lock.json": {
+    "mtime": 1779725724.228436,
+    "ast_hash": "be62924b0b7a3230799da8bc12c6cd12",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\tailwind.config.ts": {
+    "mtime": 1779727340.1302478,
+    "ast_hash": "fb3ac120c176e590848de351c29de40b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\tsconfig.json": {
+    "mtime": 1779727339.633286,
+    "ast_hash": "e025aa30046dd9d462a11139a4805022",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\vitest.config.ts": {
+    "mtime": 1779991239.5252278,
+    "ast_hash": "cb77b14a7c0848c299ce7ed924e9c8c6",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\diagnose\\scripts\\hitl-loop.template.sh": {
+    "mtime": 1779725718.9469929,
+    "ast_hash": "27d758d3557409fbb17bc3cced9367cf",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.gemini\\settings.json": {
+    "mtime": 1780289611.9518588,
+    "ast_hash": "ddc6069a85a1acc06096e06bcd8087ac",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\design-canvas.jsx": {
+    "mtime": 1779724924.2212262,
+    "ast_hash": "8d1eaad9492d88333af8519c1147be80",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\components\\Chrome.jsx": {
+    "mtime": 1779724924.1718218,
+    "ast_hash": "944c062317910ebc76b4f5997c3ce3ae",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\components\\Icons.jsx": {
+    "mtime": 1779724924.1812978,
+    "ast_hash": "e096323ef69d5f8f4bce866dab6a060a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\components\\UI.jsx": {
+    "mtime": 1779724924.1812978,
+    "ast_hash": "1ed59a1726ee5d59cffed80d8710989e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\data\\fixtures.jsx": {
+    "mtime": 1779724924.194748,
+    "ast_hash": "8cc912c2ef3786a4046b9fd05f15b722",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Architecture.jsx": {
+    "mtime": 1779724924.2509775,
+    "ast_hash": "eb88d0320a96e90aceb8ce6b09e12cce",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Auth.jsx": {
+    "mtime": 1779724924.256035,
+    "ast_hash": "245655ee24da63c5c2e8896f42cd873f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Dashboard.jsx": {
+    "mtime": 1779724924.2717679,
+    "ast_hash": "a120bf7aa1c61e8fec055c4ccdb903f2",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Deploy.jsx": {
+    "mtime": 1779724924.2746046,
+    "ast_hash": "81fe724470da77d22d3cf650f1d0d376",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\GenerationResult.jsx": {
+    "mtime": 1779724924.2878933,
+    "ast_hash": "99e8a93368e46fdd92627548e13f6440",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Landing.jsx": {
+    "mtime": 1779724924.2878933,
+    "ast_hash": "dbaac037720ff8ef50aa4da14babcaf3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Settings.jsx": {
+    "mtime": 1779724924.3038135,
+    "ast_hash": "d156c482b81a17cd243caca6fd8c0b33",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\States.jsx": {
+    "mtime": 1779724924.3199503,
+    "ast_hash": "3d3bf166b50968161375a7dede7e76d3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\screens\\Workspace.jsx": {
+    "mtime": 1779724924.3199503,
+    "ast_hash": "8d0c43eee126970cfa095725a38fc36d",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\middleware.ts": {
+    "mtime": 1779763554.3049233,
+    "ast_hash": "b3cb4eb3fe747cc3e9824b04c5ffa644",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\layout.tsx": {
+    "mtime": 1779727386.0959496,
+    "ast_hash": "5b48c8e2c7128b930640a622de9d8833",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\page.tsx": {
+    "mtime": 1779727346.7095196,
+    "ast_hash": "82674fceef9042c934e51b0f45830dcd",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\providers.tsx": {
+    "mtime": 1779856069.5597844,
+    "ast_hash": "bc3997048b92ba83c85340e6c2ec6130",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\layout.tsx": {
+    "mtime": 1779765870.4086573,
+    "ast_hash": "3ae5034ff5463d679642ffabe5abda60",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\architecture\\page.tsx": {
+    "mtime": 1779727348.284824,
+    "ast_hash": "85685cf4220d29defc29bc230449c245",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\dashboard\\page.tsx": {
+    "mtime": 1779727347.8452153,
+    "ast_hash": "28b101c8a3c67fde51a2f98e930b1d5b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\deployments\\page.tsx": {
+    "mtime": 1779732360.7726078,
+    "ast_hash": "883e6809c3c3dbf51b566d74f6cb35bf",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\docs\\page.tsx": {
+    "mtime": 1779732374.554798,
+    "ast_hash": "389008863204bd83a1633951c4279837",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\generations\\page.tsx": {
+    "mtime": 1780224219.4157965,
+    "ast_hash": "eaa372c8a17d859762407d3626b2b2bf",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\generations\\[id]\\page.tsx": {
+    "mtime": 1779727348.4993765,
+    "ast_hash": "336d9dc24af4a5db066df071ccbb2c37",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\settings\\page.tsx": {
+    "mtime": 1779727348.7148054,
+    "ast_hash": "c3dad808436e5aeac0b4353bdb715d12",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\templates\\page.tsx": {
+    "mtime": 1779732368.7075698,
+    "ast_hash": "1761c0c14c42667502d3b1afb9d917ce",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\(product)\\workspace\\page.tsx": {
+    "mtime": 1779727348.0694666,
+    "ast_hash": "41bcee26142e42be43984187c229c7b5",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\api\\generate\\route.ts": {
+    "mtime": 1780214947.04601,
+    "ast_hash": "53cd889dbe9203bc3c07733f98b70869",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\api\\prompts\\route.ts": {
+    "mtime": 1779994973.8925776,
+    "ast_hash": "38b762b91aa3af8a6e74852d10524e0f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\auth\\callback\\route.ts": {
+    "mtime": 1779800663.2457843,
+    "ast_hash": "6b569019bf3bd28799448ee821773933",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\forgot-password\\page.tsx": {
+    "mtime": 1779763596.4040172,
+    "ast_hash": "2209a72fcfe40b31bbb9b442cb9cebfb",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\sign-in\\page.tsx": {
+    "mtime": 1779763587.4718487,
+    "ast_hash": "55dd0f49a631d618ed6fd9637ba46eb8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\app\\sign-up\\page.tsx": {
+    "mtime": 1779763591.872555,
+    "ast_hash": "646d04ed7c5d8cd29f14a09e48da00dd",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\architecture-diagram.tsx": {
+    "mtime": 1779970178.9690208,
+    "ast_hash": "730347e6251fc07d408551db2e4d6546",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\badge.tsx": {
+    "mtime": 1779727385.2753193,
+    "ast_hash": "951e39a162776bdb3711a9a9c0451452",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\button.tsx": {
+    "mtime": 1779727421.29424,
+    "ast_hash": "44616f0d230f869ca144f1882872dc7f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\card.tsx": {
+    "mtime": 1779727341.7639925,
+    "ast_hash": "6b938aae184a1575f61d6237417c6f13",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\code-block.tsx": {
+    "mtime": 1779807970.9827516,
+    "ast_hash": "7059ea44f9b8f346817893ad39f68f19",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\collapsible-panel.tsx": {
+    "mtime": 1779807886.3043983,
+    "ast_hash": "8363c98345c4515e23c1b0cd1a8fc3d9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\dialog.tsx": {
+    "mtime": 1779727342.283394,
+    "ast_hash": "9fe216f5485495b0f5ef7d1aacaedb9a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\file-tree.tsx": {
+    "mtime": 1779727342.5457616,
+    "ast_hash": "2c1ade63693414c5153318ce6d8acfe8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\icons.tsx": {
+    "mtime": 1779761242.6986725,
+    "ast_hash": "e081464c30d914fe4ffc975f28057e45",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\input.tsx": {
+    "mtime": 1779727341.8988545,
+    "ast_hash": "06b45c1449bc489a38ce6d291362bf88",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\progress.tsx": {
+    "mtime": 1779727342.1563413,
+    "ast_hash": "6da3018735f8c56fc354a25dc8b225f6",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\route-pill.tsx": {
+    "mtime": 1779727342.6825712,
+    "ast_hash": "cc42f99006d2d0a04fd4a1331af38a27",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\components\\ui\\textarea.tsx": {
+    "mtime": 1779727342.0136797,
+    "ast_hash": "d3f95cc0f2c68b1f4eba429769723c9e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\domain-discovery-engine.ts": {
+    "mtime": 1779970872.535934,
+    "ast_hash": "a90917fced2b9eeea6b1049ff6953416",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\domain-intelligence-engine.ts": {
+    "mtime": 1780214902.3788598,
+    "ast_hash": "e076317f1d386dd671efbfa250f8c092",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\domain-intelligence-types.ts": {
+    "mtime": 1780154933.0681362,
+    "ast_hash": "398d873174c7ef9f79ef018fba15d48c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\evidence-engine.ts": {
+    "mtime": 1779995408.3392832,
+    "ast_hash": "5ee09dcb15e26f820ef2130197b39d9f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\index.ts": {
+    "mtime": 1780143587.712217,
+    "ast_hash": "61dff2dc9675efc3aa76df1b1fb30966",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\synthesis-engine.ts": {
+    "mtime": 1779989704.3318844,
+    "ast_hash": "ad6938cb6fe4a9c28e61607072341ea9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\synthesis-types.ts": {
+    "mtime": 1779939016.3516424,
+    "ast_hash": "e1d0ceef2ef790d37b437e52d79330a0",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\trace.ts": {
+    "mtime": 1779993028.866336,
+    "ast_hash": "9f375bfba5141e56efd3d0f523c4f850",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\types.ts": {
+    "mtime": 1780219712.88229,
+    "ast_hash": "7096650c83f3b8d33c023487d91d8c80",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\utils.ts": {
+    "mtime": 1780214915.2536726,
+    "ast_hash": "336af011edefdec9a2fe3881b39e4d49",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\architecture-graph.tsx": {
+    "mtime": 1779970295.3024707,
+    "ast_hash": "7425191faa927c6ecb5f300f592cec89",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\architecture-page.tsx": {
+    "mtime": 1779801450.8445635,
+    "ast_hash": "354bd67b2e8f7f81fa72813baaf55208",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\architecture-review.tsx": {
+    "mtime": 1780227288.4564214,
+    "ast_hash": "df909e0865b2549124ba33c002aecd6c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\blueprint-review.tsx": {
+    "mtime": 1780227296.2379262,
+    "ast_hash": "0bab19d33b96678a1963d46c66a536a7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\gap-resolution-wizard.tsx": {
+    "mtime": 1780142499.1190639,
+    "ast_hash": "f90db37ca092b2cd95f3a28d7447860f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\components\\stack-selection-wizard.tsx": {
+    "mtime": 1780139320.7734249,
+    "ast_hash": "11b0cf9c8b4678c9ce271cbf247a867a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\api-surface-compiler.ts": {
+    "mtime": 1780218545.4628308,
+    "ast_hash": "558857c3e9e0652a76b56b79081b8b96",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\architecture-requirements-engine.ts": {
+    "mtime": 1780136932.7838335,
+    "ast_hash": "71f6e49d275ddddb06bc03fb1b465c3f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\blueprint-consistency-validator.ts": {
+    "mtime": 1779967393.1433806,
+    "ast_hash": "258527895f8493ef447a7404f702d11a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\business-capability-engine.ts": {
+    "mtime": 1779991497.3133602,
+    "ast_hash": "2d5bbc765a41fde6a8c70f83a396e82a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\capability-api-generator.ts": {
+    "mtime": 1780218551.5888064,
+    "ast_hash": "3ff1b8efc56b57a4d81ccadd30cbcdad",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\capability-entity-validator.ts": {
+    "mtime": 1779989646.1996436,
+    "ast_hash": "8ff4a8a317d250020483f144eb444b78",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\clarification-engine.ts": {
+    "mtime": 1779948562.646966,
+    "ast_hash": "f0a856dd1ae1738a64efbcb8563047db",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\confidence-engine.ts": {
+    "mtime": 1779971102.6973236,
+    "ast_hash": "f07b01842d2d8f3cacc63a311dda2ed9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\crud-cluster-engine.ts": {
+    "mtime": 1779991520.192742,
+    "ast_hash": "2530e0db3b613636ca428abd01e9fe70",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\domain-graph-validator.ts": {
+    "mtime": 1779989660.1864057,
+    "ast_hash": "8959f38eb08dc242edb3189643ee2cfb",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\dto-generator.ts": {
+    "mtime": 1780218565.7050884,
+    "ast_hash": "c9ce576e4ec7a9763c032df5b0bfc54c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\entity-qualifier.ts": {
+    "mtime": 1779989620.5998642,
+    "ast_hash": "97be5136b9bdba0d895db5ded405fa1d",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\gap-detector.ts": {
+    "mtime": 1780154953.1203575,
+    "ast_hash": "49548240d8f5e12e1479dd2a962692ad",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\gap-resolution-engine.ts": {
+    "mtime": 1780153429.1984105,
+    "ast_hash": "0a3b8b5409560504b6b2bf3fe7b5e83c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\infra-verifier.ts": {
+    "mtime": 1779947526.5693119,
+    "ast_hash": "56a488a29c8ad470fb0bc8865052f051",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\pattern-engine.ts": {
+    "mtime": 1779949881.3846238,
+    "ast_hash": "68f6eb99c291f8ae2c27dbf265411509",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\permission-generator.ts": {
+    "mtime": 1780218571.9299235,
+    "ast_hash": "774777a6f5b20da8ff904194e2bbf364",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\readiness-validator.ts": {
+    "mtime": 1779991574.701921,
+    "ast_hash": "abdfe52fc5bb33cd0deffd1d60b7e33b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\relationship-engine.ts": {
+    "mtime": 1779967423.0505352,
+    "ast_hash": "f54532038df947c19c2dca4aee4aab1e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\schema-compiler.ts": {
+    "mtime": 1780214926.2821288,
+    "ast_hash": "d9cfe469c1a54c35dfa232dfb6da3887",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\semantic-classifier.ts": {
+    "mtime": 1779991545.9747412,
+    "ast_hash": "fcee5530c92c31d6a646eae1526e6af9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\engines\\service-generator.ts": {
+    "mtime": 1780218557.9918697,
+    "ast_hash": "2fa9e2c7200b6115b315bf65d1199f23",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\capability-reconstruction.test.ts": {
+    "mtime": 1779965183.8382237,
+    "ast_hash": "f9493ea78dcfd66532561e15fa88ef38",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\clarification-engine.test.ts": {
+    "mtime": 1779991794.3710742,
+    "ast_hash": "5da4c9bda661f151fe0c11191c630f57",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\confidence-engine.test.ts": {
+    "mtime": 1779992148.4298968,
+    "ast_hash": "a5a89c9cfdb8e5b97b5b001d6bf3b149",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\domain-graph-integrity.test.ts": {
+    "mtime": 1779967502.1224947,
+    "ast_hash": "98d1b1f468c25479383029c8fb00153b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\entity-qualification-scores.test.ts": {
+    "mtime": 1779963905.6955755,
+    "ast_hash": "efc25886d551073f21d8b1d61428204c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\entity-qualification.test.ts": {
+    "mtime": 1779992086.789908,
+    "ast_hash": "6b137ccb95454d03ac825ed00cc3663c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\gap-detection.test.ts": {
+    "mtime": 1779991733.024181,
+    "ast_hash": "709372c50d0ebcb7f16d22e144fba89f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\infrastructure-verification.test.ts": {
+    "mtime": 1779993078.3768666,
+    "ast_hash": "3ff4a90a8e8f73d1632da6aa7dcfc3c1",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\pattern-engine.test.ts": {
+    "mtime": 1779991973.4330478,
+    "ast_hash": "1c687362edcd457b4cb3a991c0f5e46a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\readiness-validator.test.ts": {
+    "mtime": 1779991757.2405214,
+    "ast_hash": "73780d734e89638fbe7d1a322eda814e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\semantic-classifier-intent.test.ts": {
+    "mtime": 1779963775.099921,
+    "ast_hash": "abe9a66e899cc8b651e6799970137bb1",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\semantic-classifier.test.ts": {
+    "mtime": 1779991772.8372388,
+    "ast_hash": "65a6c017c1286b07bfc900e2478fa2dd",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\stabilization.test.ts": {
+    "mtime": 1779991945.7682827,
+    "ast_hash": "17e84f04b0f9478fc73dcfd9e854357a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\architecture\\tests\\visualization.test.ts": {
+    "mtime": 1779993085.3463967,
+    "ast_hash": "c5ef90fafeefb05e8810f43bce2b5db8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\index.ts": {
+    "mtime": 1779727344.2870796,
+    "ast_hash": "24644c9481529ddf8bda17f169b272a9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\components\\auth-page.tsx": {
+    "mtime": 1779800670.1171174,
+    "ast_hash": "e452bc19826411c524c9f725d843c20a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\components\\auth-shell.tsx": {
+    "mtime": 1779892441.9807007,
+    "ast_hash": "9690e60ab11402b0d2587fb726e716b5",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\context\\auth-context.tsx": {
+    "mtime": 1779865179.4488063,
+    "ast_hash": "154e4b75814c4bbd93f6ff0f3df6518e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\context\\toast-context.tsx": {
+    "mtime": 1779763639.5051892,
+    "ast_hash": "3d9c6814c60cb4b1d147dedfb2b3083a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\auth\\lib\\validation.ts": {
+    "mtime": 1779763561.8661087,
+    "ast_hash": "08356d61185ab9aa1e6cf40e844da4d4",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\dashboard\\index.ts": {
+    "mtime": 1779766413.163618,
+    "ast_hash": "ab73721cf9354c15f57dc1e283463563",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\dashboard\\api\\projects.ts": {
+    "mtime": 1779865225.8700294,
+    "ast_hash": "d20f45450c22dcb41e1b3456493bd59c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\dashboard\\components\\dashboard-page.tsx": {
+    "mtime": 1779856180.8955975,
+    "ast_hash": "26a3b60447d9152c7b237dce7e242c75",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\deployments\\index.ts": {
+    "mtime": 1779732380.8226712,
+    "ast_hash": "6996ab485951e466fea7276a002d8ad7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\deployments\\components\\deploy-page.tsx": {
+    "mtime": 1779892249.8218634,
+    "ast_hash": "ccdf36443c023b70b0c54f0a16ebd197",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\docs\\index.ts": {
+    "mtime": 1779732500.7844377,
+    "ast_hash": "634524af580783c649167bbbe2ec8529",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\docs\\components\\docs-page.tsx": {
+    "mtime": 1779732857.9732313,
+    "ast_hash": "7fe7818233896112ba66a8a8bc83a4ff",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\index.ts": {
+    "mtime": 1779862082.2640014,
+    "ast_hash": "9e8422a4c2d7c6c39887c814d80be5fa",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\ai-context-builder.ts": {
+    "mtime": 1780226860.2043881,
+    "ast_hash": "b3f652132aa19674f48fbdc851d15775",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\ai-output-validator.ts": {
+    "mtime": 1780226933.0299318,
+    "ast_hash": "9edfc19e82bf80dad3db34f95d8a89f3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\api-generator.ts": {
+    "mtime": 1779783682.885042,
+    "ast_hash": "fbf2bc175e1e3d82b649d22ab4dcbd81",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\business-logic-system-prompt.ts": {
+    "mtime": 1780226867.4735913,
+    "ast_hash": "c09a4649f97c4297a41de43f52858aeb",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\dependency-assembler.ts": {
+    "mtime": 1780220148.5949936,
+    "ast_hash": "94e0d46abc6d788b2ea852d1e3690fba",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\drizzle-generator.ts": {
+    "mtime": 1780214937.6464458,
+    "ast_hash": "7ba663ef9f89349f80b226c26b40b469",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\dto-validation-compiler.ts": {
+    "mtime": 1780219725.8066754,
+    "ast_hash": "ccf3c28ee9f7bee7c82d428c74d0a016",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\enum-generator.ts": {
+    "mtime": 1780219731.5560036,
+    "ast_hash": "2629668eaad6c3f1248c715dd7c8a993",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\env-generator.ts": {
+    "mtime": 1780220160.528232,
+    "ast_hash": "ccc043ac428ad986128b76ebde4d2710",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\exporter.ts": {
+    "mtime": 1780224073.7691083,
+    "ast_hash": "cfd01fe910f8d65b19b1509f9df99f33",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\fallback.ts": {
+    "mtime": 1780224098.0165367,
+    "ast_hash": "20eb5c69282c65085b12b071f335c41e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\generation-guard.ts": {
+    "mtime": 1780221964.030642,
+    "ast_hash": "c86b162e9328e5495e2ab3539e4eacd0",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\generation-plan.ts": {
+    "mtime": 1780218578.385789,
+    "ast_hash": "5ab5615097b672f2576bf535c0fe9ef8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\infra-generator.ts": {
+    "mtime": 1780219778.4705074,
+    "ast_hash": "6f15b6b896a92c1cbe9fb5e2d0cff921",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\nestjs-generator.ts": {
+    "mtime": 1780228236.1429715,
+    "ast_hash": "d184a6caef8d7ce3dfe3deea49b1cfda",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\openai.ts": {
+    "mtime": 1779865179.442281,
+    "ast_hash": "387720c5fdc9fdba07e40686cf0828b8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\pipeline.ts": {
+    "mtime": 1780228246.613306,
+    "ast_hash": "cac543d8a5cbf06f3f95290f7b6bad62",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\project-exporter.ts": {
+    "mtime": 1780220265.7102783,
+    "ast_hash": "6e03e9482f526c31c1de262d4f382674",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\prompts.ts": {
+    "mtime": 1779781375.9959574,
+    "ast_hash": "f0350f0dc53ea87cab128cda78d37cff",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\runtime-validation-engine.ts": {
+    "mtime": 1780220204.9534805,
+    "ast_hash": "ead1a1ed8b73b8aea13b274b0bf95629",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\schema-parser.ts": {
+    "mtime": 1779783399.063973,
+    "ast_hash": "b6a1380d53c826b62e1a8b3f5977eb75",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\schema-types.ts": {
+    "mtime": 1779783383.3558497,
+    "ast_hash": "baf7fa3ff63f28a560616141d020ff5c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\service-logic-ai-engine.ts": {
+    "mtime": 1780228176.1866655,
+    "ast_hash": "2d2e0ad8498c1698de42d044d2170aee",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\service-logic-compiler.ts": {
+    "mtime": 1780219738.4503398,
+    "ast_hash": "79270653d2135c39fd72e3db2e5eb7c9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\surface-types.ts": {
+    "mtime": 1780219718.809625,
+    "ast_hash": "295cf808c3afb7b994fb2c3ab2d9f00d",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\syntax-highlighter.ts": {
+    "mtime": 1779782467.8108885,
+    "ast_hash": "cc0731ff0b883b1ae23da08191e80e38",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\test-generation-engine.ts": {
+    "mtime": 1780226882.0350773,
+    "ast_hash": "fe0b209e037fa824b698f4a30dfcaf77",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\api\\types.ts": {
+    "mtime": 1780226977.994937,
+    "ast_hash": "3886e0d1f60c7498df024ececda3fead",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\components\\context-generator-hub.tsx": {
+    "mtime": 1779995150.1758463,
+    "ast_hash": "17d57b8f0f1dab0e8c402115e4cf050a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\components\\generation-page.tsx": {
+    "mtime": 1780224205.3067036,
+    "ast_hash": "04d8e9540529ad6fac9e0488466d949f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\components\\generations-list-page.tsx": {
+    "mtime": 1780224229.542833,
+    "ast_hash": "5269683069db7d913fb695f6c1145271",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\components\\interactive-viewport.tsx": {
+    "mtime": 1779781936.4332318,
+    "ast_hash": "73e4f412e7c1d44fc3876ec42594abf8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\lib\\context-tools.ts": {
+    "mtime": 1779995136.8922436,
+    "ast_hash": "ec9dc5a9518658dab61e8028d04502ff",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\generation\\lib\\prompt-variants.ts": {
+    "mtime": 1779861002.9047246,
+    "ast_hash": "77773579896c2acb472a2c5564f4274a",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\index.ts": {
+    "mtime": 1779974620.8594527,
+    "ast_hash": "c2ffd46832cf0e915a8d066da7ed5ac4",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\types.ts": {
+    "mtime": 1779995609.1751025,
+    "ast_hash": "fd206205a31a91925adad7d44195c38c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\api-inferrer.ts": {
+    "mtime": 1779971935.1385167,
+    "ast_hash": "36e61dedc19f02b7d66dd121f3f6f4f7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\complexity-analyzer.ts": {
+    "mtime": 1779808691.8810477,
+    "ast_hash": "c7b080d2593d4fd643ffbdbb9c42e812",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\context-parser.ts": {
+    "mtime": 1779995622.589449,
+    "ast_hash": "f912bc486c0af6b3693f744b8a867b70",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\entity-inferrer.ts": {
+    "mtime": 1779972026.9599664,
+    "ast_hash": "c846b32c23675ba717015147438f6e7d",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\framework-detector.ts": {
+    "mtime": 1779858890.8496368,
+    "ast_hash": "df2dae364f6bd5662391ba49debf6797",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\index.ts": {
+    "mtime": 1779995126.531293,
+    "ast_hash": "fc488b68bf47813f125230c5591051ed",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\jsx-intent.ts": {
+    "mtime": 1779857067.0348525,
+    "ast_hash": "9a6831f25c4fe896a214df2fb4381499",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\metadata-inferrer.ts": {
+    "mtime": 1779864151.195639,
+    "ast_hash": "e04a44878cb60e0ee5b3ef5762242b9e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\question-generator.ts": {
+    "mtime": 1780142106.3167427,
+    "ast_hash": "aeeb4bb51f8eefdf7134de9cca0e14ed",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\role-inferrer.ts": {
+    "mtime": 1779972983.3447864,
+    "ast_hash": "1e423816a4e9f8c123a0f88e19d77612",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\route-extractor.ts": {
+    "mtime": 1779974215.041091,
+    "ast_hash": "68d8990560634cafd5df827fd3bdb4c8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\state-inferrer.ts": {
+    "mtime": 1779813687.724234,
+    "ast_hash": "2fe5604ea47aac422c6ec33b98937857",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\analyzers\\workflow-inferrer.ts": {
+    "mtime": 1779858920.1140363,
+    "ast_hash": "ce184c9adeb7705a2dc90fd82e3b92c7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\components\\analysis-summary.tsx": {
+    "mtime": 1779974312.3922613,
+    "ast_hash": "0e5002fbec9f6e972d0e3579e6b402a3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\components\\clarification-questions.tsx": {
+    "mtime": 1779886218.024064,
+    "ast_hash": "9852a018fd565256c5cc6ce4d0afd785",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\components\\context-review.tsx": {
+    "mtime": 1779974413.3943758,
+    "ast_hash": "fed0b0d59eed7195457de6d7d4bd22fd",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\components\\ingestion-panel.tsx": {
+    "mtime": 1779861263.0169368,
+    "ast_hash": "cbdc1ebe0a8ba064b9145fbe7bd11bd2",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\providers\\github-provider.ts": {
+    "mtime": 1779856965.6355138,
+    "ast_hash": "d8fdafb6f2bf7d09e60367b3a1070eb1",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\ingestion\\providers\\zip-provider.ts": {
+    "mtime": 1779803834.4678948,
+    "ast_hash": "0e863a5968cde3ebab1f4de1ae62bc49",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\marketing\\index.ts": {
+    "mtime": 1779727343.8030715,
+    "ast_hash": "f9f40e2c4f71f093f01e703454149d48",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\marketing\\components\\landing-page.tsx": {
+    "mtime": 1779761872.4012332,
+    "ast_hash": "1989d2f86e2ba0b16dbecbbd1ed3b5d6",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\prompts\\prompt-loader.ts": {
+    "mtime": 1779994963.6433496,
+    "ast_hash": "9b8d86d0c5f214eaa3715652473c72ef",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\prompts\\tests\\prompt-registry.test.ts": {
+    "mtime": 1779995491.668511,
+    "ast_hash": "e21bb062e92b207dacaf3042d91ab747",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\settings\\index.ts": {
+    "mtime": 1779727346.1036935,
+    "ast_hash": "3fcadc8d2e0ed1a28aeff4afa35d00a7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\settings\\components\\settings-page.tsx": {
+    "mtime": 1779763612.1613615,
+    "ast_hash": "a2a554b8db1f8f8572ccaefb0729734d",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\index.ts": {
+    "mtime": 1779765857.049671,
+    "ast_hash": "30dbfe83645674e4ace42ae9baade822",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\components\\app-sidebar.tsx": {
+    "mtime": 1780224292.5078382,
+    "ast_hash": "c07dabeff4f5c35e73980d4d129e34d2",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\components\\app-topbar.tsx": {
+    "mtime": 1779765830.9548304,
+    "ast_hash": "b5e50bdd188b1858d69b9255e00082e5",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\components\\brand.tsx": {
+    "mtime": 1779761768.1471367,
+    "ast_hash": "f6bdfbe9e4641c596cf1eec35b39cd5f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\components\\command-palette.tsx": {
+    "mtime": 1779765844.582899,
+    "ast_hash": "b320228bdff368d046a44c4764d62d2b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\shell\\context\\shell-context.tsx": {
+    "mtime": 1779765786.086861,
+    "ast_hash": "8c54839f28f6498269814d62d988acfb",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\templates\\index.ts": {
+    "mtime": 1779732463.586843,
+    "ast_hash": "4be220340a913e910445732e4bcbc510",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\templates\\components\\templates-page.tsx": {
+    "mtime": 1779734528.454346,
+    "ast_hash": "7cf123a4bb11bd62f2c4358d6794cd59",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\workspace\\index.ts": {
+    "mtime": 1779727344.978379,
+    "ast_hash": "e7713d8ebb7901113f34db957b2e321c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\workspace\\api\\workspaces.ts": {
+    "mtime": 1779856094.1527767,
+    "ast_hash": "85e4a5a73144d105b909ac6c625ed9ed",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\workspace\\components\\command-palette.tsx": {
+    "mtime": 1779892280.3611927,
+    "ast_hash": "03f6fb5b76dde103d7a7a8307c447a61",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\workspace\\components\\workspace-page.tsx": {
+    "mtime": 1780153345.674779,
+    "ast_hash": "1a86bb72f74ed393529e8d7ac2f463de",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\features\\workspace\\context\\workspace-context.tsx": {
+    "mtime": 1779894825.8839202,
+    "ast_hash": "9609fa7fb2fb27ad7bab57847bf309f4",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\demo-data.ts": {
+    "mtime": 1779976029.4118354,
+    "ast_hash": "44a30717ad2fc16d95f498256eb31f07",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\types.ts": {
+    "mtime": 1779861028.121854,
+    "ast_hash": "687e5a2484ac3f9ffd4bf32f8e3af7ca",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\utils.ts": {
+    "mtime": 1779766393.8622324,
+    "ast_hash": "a872e8d6eb324eb3264be8c4883b75d2",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\supabase\\client.ts": {
+    "mtime": 1779763511.091477,
+    "ast_hash": "ed9bf2473398add3f1fcfcc0e3db8f56",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\supabase\\middleware.ts": {
+    "mtime": 1779763521.5227356,
+    "ast_hash": "22c5f583bea74723b690824307e907a7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\src\\lib\\supabase\\server.ts": {
+    "mtime": 1779763516.4233625,
+    "ast_hash": "050488dd1bd613e8451fba870d38c037",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\supabase\\schema.sql": {
+    "mtime": 1779864171.3335893,
+    "ast_hash": "b14ef0bb808959688481e7ba2ea0045c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Feature Implementation.md": {
+    "mtime": 1779775776.249889,
+    "ast_hash": "736b90aa15de549fa6c51c01d4b545ab",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\GEMINI.md": {
+    "mtime": 1780289611.9466577,
+    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\README.md": {
+    "mtime": 1779727348.8492227,
+    "ast_hash": "5d53c99781eb0a670e745f213e5348c3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\caveman\\SKILL.md": {
+    "mtime": 1779725719.0041487,
+    "ast_hash": "886dde78199ebaad325ee85f5887d3bf",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\diagnose\\SKILL.md": {
+    "mtime": 1779725718.9469929,
+    "ast_hash": "4bcd9cce196b0aa15fd65efe621f9466",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\grill-me\\SKILL.md": {
+    "mtime": 1779725719.0051496,
+    "ast_hash": "0dc3fcbdb6a27228f328ea86f4505c11",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\grill-with-docs\\ADR-FORMAT.md": {
+    "mtime": 1779725718.9469929,
+    "ast_hash": "3c49999a3715a7b65fe8521d4bf9e188",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\grill-with-docs\\CONTEXT-FORMAT.md": {
+    "mtime": 1779725718.9469929,
+    "ast_hash": "e540926ffc8338f2c411c1ab60a1f319",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\grill-with-docs\\SKILL.md": {
+    "mtime": 1779725718.9628863,
+    "ast_hash": "db95d43b9f652680bc60a27029e58cd9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\handoff\\SKILL.md": {
+    "mtime": 1779725719.0061524,
+    "ast_hash": "f446a9106d5064c95dc042dc195cd443",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\improve-codebase-architecture\\DEEPENING.md": {
+    "mtime": 1779725718.9646988,
+    "ast_hash": "83611866654c9324426ee35d6fb4295e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\improve-codebase-architecture\\HTML-REPORT.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "6be2b9d4c2c63e5c1671ab0b059ee9a1",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\improve-codebase-architecture\\INTERFACE-DESIGN.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "495dddf4d7f1fed0240811bc71c1d9ea",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\improve-codebase-architecture\\LANGUAGE.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "ba0099d6b60d658b2aff0bba0b41dd3c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\improve-codebase-architecture\\SKILL.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "b75525c48539b4aa9dd4ee0cbd287d28",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\prototype\\LOGIC.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "a552096fc035656f69b24662c6e2393c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\prototype\\SKILL.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "95cf5fd1901341044feef57b4eff578e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\prototype\\UI.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "8bce52ff0585f29ed7f613c7e1081031",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\domain.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "39ab51eb45bcf3fc62713953acbaf5f4",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\issue-tracker-github.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "17c36a36e7bcda4dc814bda9bfa13438",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\issue-tracker-gitlab.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "3b6a15cfbd5c0a2f4b5379125a638be3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\issue-tracker-local.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "1bd6a2003a877f2cece3fd0c45271d8e",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\SKILL.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "9bcdaee1739974ac0ef2679b72f90f09",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\setup-matt-pocock-skills\\triage-labels.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "85409347dbf487c8a25c9dac59708b83",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\deep-modules.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "b5ab090a761366ce3c2c02117b776445",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\interface-design.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "bcd6f09692098ec7a748a7d98e99d3ea",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\mocking.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "d5bba1ea1f387c4809b7dc7c4e75c862",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\refactoring.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "e8a3e0973fa19f267a836fa6edc195ad",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\SKILL.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "06c57edca8db6db8f64c203c60a22de8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\tdd\\tests.md": {
+    "mtime": 1779725718.9667084,
+    "ast_hash": "2927904135046181aae6793038e5f6c7",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\to-issues\\SKILL.md": {
+    "mtime": 1779725718.979561,
+    "ast_hash": "cd3376e187889fea2a1cc2b3fdc11eb3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\to-prd\\SKILL.md": {
+    "mtime": 1779725718.9807627,
+    "ast_hash": "12d0737b03d0511a5d5ad72c4dbad527",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\triage\\AGENT-BRIEF.md": {
+    "mtime": 1779725718.9812553,
+    "ast_hash": "743cbec88c3c67a94ef095d3d59b6ddb",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\triage\\OUT-OF-SCOPE.md": {
+    "mtime": 1779725718.9827433,
+    "ast_hash": "da53d011d956415baf313fb2f6d70fbd",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\triage\\SKILL.md": {
+    "mtime": 1779725718.984765,
+    "ast_hash": "809533f5d59e313345d4f9a1c99e9b95",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\write-a-skill\\SKILL.md": {
+    "mtime": 1779725719.008454,
+    "ast_hash": "beabe48024b635f44b1775265c777490",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\.agents\\skills\\zoom-out\\SKILL.md": {
+    "mtime": 1779725718.984765,
+    "ast_hash": "d7610fc22629360bdc078e0e5c255d0f",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\AWESOME_SCALABILITY_AGENT_REFERENCE.md": {
+    "mtime": 1778823815.9947805,
+    "ast_hash": "36793eb6517dc54166dc25cd2fcae3ce",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\BACKEND_BEST_PRACTICES_AGENT_REFERENCE.md": {
+    "mtime": 1777817315.2298336,
+    "ast_hash": "7f5f2e87e722ec33174dc7fb1f716c8b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\BULLETPROOF_REACT_AGENT_REFERENCE.md": {
+    "mtime": 1777817319.7916985,
+    "ast_hash": "2029b35173f96415690f95190afe22a2",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\DOKKU_AGENT_REFERENCE.md": {
+    "mtime": 1777817327.8894541,
+    "ast_hash": "37a14a7c17d1a42980b1786227b164f4",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\ENGINEERING_BLOGS_AGENT_REFERENCE.md": {
+    "mtime": 1777817326.9221623,
+    "ast_hash": "92668a40796d2fc45466b09bdd78dbe3",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\GOOGLE_ENG_PRACTICES_AGENT_REFERENCE.md": {
+    "mtime": 1777817313.0261555,
+    "ast_hash": "dc7eb14bd171b5e3b5b7000b79422e3b",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\HOWTHEYTEST_AGENT_REFERENCE.md": {
+    "mtime": 1777817319.5083556,
+    "ast_hash": "7f89819458e17e2bcb9fa7f67dff8ce0",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\martinfowler-microservices-reference.md": {
+    "mtime": 1778825792.050353,
+    "ast_hash": "1a23a410769842dbc958dc3447124198",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\MISSING_SEMESTER_REFERENCE.md": {
+    "mtime": 1777817324.2025354,
+    "ast_hash": "5ead5cca88597efc0e8a50275c796714",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\NHOST_AGENT_REFERENCE.md": {
+    "mtime": 1777817314.0857205,
+    "ast_hash": "2211f1ccc43bbe3354a033781302e8a8",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\PAPERS_WE_LOVE_AGENT_REFERENCE.md": {
+    "mtime": 1777817329.1809106,
+    "ast_hash": "a9e1d150bf52f3c8c0a47a69d0aeb6c0",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\refactoring-guru-complete-reference.md": {
+    "mtime": 1778824764.937047,
+    "ast_hash": "18743fe5f4155d82542fc4049fe1e6fe",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\ux-laws-agent-reference.md": {
+    "mtime": 1779726367.6008024,
+    "ast_hash": "8f3faac99e5cf824285292f2a344b7aa",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\WHAT_HAPPENS_WHEN_AGENT_REFERENCE.md": {
+    "mtime": 1777817329.5473137,
+    "ast_hash": "d8998fb0407a633dbbea0593b41b3c84",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Principles\\\ud83d\udcd0 Shape Up \u2014 Stop Running in Circles and Ship Work 34b3444f3f0181678466ee9b9d7bac7f.md": {
+    "mtime": 1778340259.632587,
+    "ast_hash": "37ee831f162a4a49b78dbcd4b137b374",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\Simplicit desing files\\index.html": {
+    "mtime": 1779724924.2345567,
+    "ast_hash": "ba4349bf35c11549ff5fc106f2e0eb21",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system prompts\\system-prompt.md": {
+    "mtime": 1779994253.4352481,
+    "ast_hash": "3f9a58683167371a04ffbc6517b38474",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\bolt.md": {
+    "mtime": 1779994931.124667,
+    "ast_hash": "99be723671d40164ef698bc6d9487ec9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\claude.md": {
+    "mtime": 1779994938.3580883,
+    "ast_hash": "427a06cc2a14cce119db99298d38922c",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\cursor.md": {
+    "mtime": 1779994911.0282311,
+    "ast_hash": "26de0cba226ffcd137ae0a96a0095644",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\generic.md": {
+    "mtime": 1779994950.753733,
+    "ast_hash": "1fb8872ead634259d2ea793feeef04b9",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\lovable.md": {
+    "mtime": 1779994917.4263983,
+    "ast_hash": "86d737f2f8b83ce9e855754deb458bef",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\v0.md": {
+    "mtime": 1779994924.6834235,
+    "ast_hash": "27867c794e8fb10f8bbc615282b81c66",
+    "semantic_hash": ""
+  },
+  "D:\\Projects\\Codex\\Simplicit\\system-prompts\\windsurf.md": {
+    "mtime": 1779994944.4771452,
+    "ast_hash": "ccb2ac0704682ee0f7af8e6ad3000451",
+    "semantic_hash": ""
+  }
+}

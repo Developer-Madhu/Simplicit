@@ -111,7 +111,7 @@ Deployment: Vercel
     expect(ctx.overview.name).toBe("Booking App");
   });
 
-  test("Strict Schema Check: Blocks unsupported/missing schema versions", () => {
+  test("Lenient Schema Check: unsupported/missing schema is parsed, not blocked", () => {
     const invalidSchemaMarkdown = `---
 version: 2.0
 tool: cursor
@@ -120,9 +120,10 @@ schema: simplicit-context-v3
 # Simplicit Context v3
 `;
     const ctx = parseSimplicitContext(invalidSchemaMarkdown);
-    expect(ctx.validation.isValid).toBe(false);
-    expect(ctx.validation.errors[0]).toContain("Unsupported schema version");
-    expect(ctx.overview.name).toBe(""); // Partial parsing not run
+    // No longer hard-blocked: no schema-version error is emitted.
+    expect(ctx.validation.errors.some((e) => e.toLowerCase().includes("schema version"))).toBe(false);
+    // Instead, the unsupported schema is surfaced as a warning.
+    expect(ctx.validation.warnings.some((w) => w.includes("simplicit-context-v2"))).toBe(true);
   });
 
   test("Section-level Confidence Parsing", () => {

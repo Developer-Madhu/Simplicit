@@ -414,6 +414,7 @@ export interface IngestionResult {
   analysisLogs?: string[];
   simplicitContext?: SimplicitContext;
   clarificationQuestions?: ClarificationQuestion[];
+  astGraph?: import("./analyzers/ast/ast-types").SimplicitASTGraph;
 }
 
 // ─── Serializable version for API payloads ──────────────────────────

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AppTopbar } from "@/features/shell";
 import { Icons } from "@/components/ui/icons";
+import styles from "./dashboard-page.module.css";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/features/auth/context/toast-context";
 import { Dialog } from "@/components/ui/dialog";
@@ -107,16 +108,18 @@ interface ProjectCardProps {
   showMenu: boolean;
   onToggleMenu: () => void;
   onSelect: () => void;
+  onHover?: () => void;
   onEdit: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
 }
 
-function ProjectCard({ p, showMenu, onToggleMenu, onSelect, onEdit, onToggleStatus, onDelete }: ProjectCardProps) {
+function ProjectCard({ p, showMenu, onToggleMenu, onSelect, onHover, onEdit, onToggleStatus, onDelete }: ProjectCardProps) {
   return (
-    <div 
-      className="sf-card" 
+    <div
+      className="sf-card"
       onClick={onSelect}
+      onMouseEnter={onHover}
       style={{ padding: 0, overflow: 'visible', display: 'flex', flexDirection: 'column', minHeight: 168, cursor: 'pointer' }}
     >
       <div style={{ padding: 18, flex: 1, position: 'relative' }}>
@@ -400,8 +403,8 @@ export function DashboardPage() {
           <button className="sf-btn sf-btn--primary sf-btn--sm" onClick={handleOpenCreate}><Icons.Plus size={11} /> New project</button>
         </>}
       />
-      <main className="sf-scroll" style={{ 
-        flex: 1, 
+      <main className={`sf-scroll ${styles.main}`} style={{
+        flex: 1,
         overflow: 'auto', 
         padding: isEmptyState ? 0 : 28,
         display: isEmptyState ? 'flex' : 'block',
@@ -485,7 +488,7 @@ export function DashboardPage() {
             </div>
 
             {/* Stat row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+            <div className={styles.statsGrid}>
               <StatTile label="Active projects" value={dbProjects.length.toString()} delta="" sparkline={<Spark data={[0, 0, 0, 0, 0, 0, dbProjects.length]} />} />
               <StatTile label="Generations this month" value="0" delta="" sparkline={<Spark data={[0,0,0,0,0,0,0]} color="oklch(0.74 0.16 250)" />} />
               <StatTile label="Deployments" value={dbProjects.filter(p => p.status === 'deployed').length.toString()} delta="" sparkline={<Spark data={[0, 0, 0, 0, 0, 0, dbProjects.filter(p => p.status === 'deployed').length]} color="oklch(0.78 0.18 145)" />} />
@@ -611,7 +614,7 @@ export function DashboardPage() {
 
             {/* Project grid / list */}
             {view === 'grid' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+              <div className={styles.projectGrid}>
                 {/* Create card */}
                 <div 
                   className="sf-card" 
@@ -638,6 +641,7 @@ export function DashboardPage() {
                     showMenu={actionMenuProjectId === p.id}
                     onToggleMenu={() => setActionMenuProjectId(actionMenuProjectId === p.id ? null : p.id)}
                     onSelect={() => router.push(`/generations/${p.id}`)}
+                    onHover={() => router.prefetch(`/generations/${p.id}`)}
                     onEdit={() => handleOpenEdit(p)}
                     onToggleStatus={() => handleToggleStatus(p)}
                     onDelete={() => {
@@ -693,7 +697,7 @@ export function DashboardPage() {
             )}
 
             {/* Activity feed + usage */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
+            <div className={styles.bottomGrid}>
               <div className="sf-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="sf-row" style={{ padding: '14px 18px', borderBottom: '1px solid var(--sf-border)' }}>
                   <span className="sf-h2 sf-grow" style={{ margin: 0 }}>Activity</span>

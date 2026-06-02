@@ -1,0 +1,349 @@
+/* Generation IDE — full-screen, three-panel layout.
+   Layout-critical styles live here (precise grid + overflow control that
+   Tailwind/utility classes fight over). Colors come from the global
+   StackForge design tokens (--sf-*) defined in globals.css. */
+
+.root {
+  display: grid;
+  grid-template-rows: 44px 1fr 26px; /* header · main · status bar */
+  grid-template-columns: 1fr;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  background: var(--sf-bg);
+  color: var(--sf-text);
+  overflow: hidden;
+}
+
+/* ---- Header ---- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  min-width: 0;
+}
+
+.headerName {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* ---- Main 3-pane region ---- */
+.main {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px; /* explorer · editor · assistant */
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--sf-bg);
+  overflow: hidden;
+}
+
+.assistant {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---- Explorer ---- */
+.explorerHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--sf-border);
+  flex: 0 0 auto;
+}
+
+.searchWrap {
+  padding: 8px 10px;
+  flex: 0 0 auto;
+}
+
+.tree {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 4px 6px 16px;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--sf-text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.treeRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--sf-text);
+}
+.treeRowActive {
+  background: var(--sf-elevated);
+  color: var(--sf-text);
+}
+.treeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.newBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--sf-green);
+  background: var(--sf-green-faint);
+}
+
+/* ---- Editor ---- */
+.editorTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  flex: 0 0 auto;
+}
+.editorTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  color: var(--sf-text-muted);
+  cursor: pointer;
+  max-width: 220px;
+}
+.editorTabActive {
+  background: var(--sf-elevated);
+  color: var(--sf-text);
+  border-color: var(--sf-border);
+}
+.editorBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.editorEmpty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--sf-text-dim);
+  font-size: 13px;
+}
+
+/* ---- Assistant ---- */
+.assistantTabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--sf-border);
+  flex: 0 0 auto;
+}
+.assistantTab {
+  font-size: 13px;
+  padding: 10px 12px;
+  color: var(--sf-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+}
+.assistantTab:hover {
+  color: var(--sf-text);
+}
+.assistantTabActive {
+  color: var(--sf-text);
+}
+.assistantTabActive::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 1.5px;
+  background: var(--sf-text);
+  border-radius: 1px;
+}
+.assistantBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 14px;
+}
+.assistantFoot {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--sf-border);
+  padding: 10px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: var(--sf-chip-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--sf-border);
+  color: var(--sf-text-muted);
+  cursor: pointer;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:hover {
+  border-color: var(--sf-border-strong);
+  color: var(--sf-text);
+}
+.suggestChip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  color: var(--sf-text);
+  cursor: pointer;
+}
+.suggestChip:hover {
+  border-color: var(--sf-border-strong);
+  background: var(--sf-surface-2);
+}
+.composer {
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-r-lg, 12px);
+  background: var(--sf-surface);
+  padding: 8px;
+}
+.composer:focus-within {
+  border-color: var(--sf-border-focus);
+}
+.textarea {
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--sf-text);
+  font-family: var(--sf-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 38px;
+  max-height: 160px;
+}
+.textarea::placeholder {
+  color: var(--sf-text-dim);
+}
+
+/* ---- Status bar ---- */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  border-top: 1px solid var(--sf-border);
+  background: var(--sf-bg-2);
+  font-size: 11.5px;
+  color: var(--sf-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.statusSeg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* ---- Responsive ---- */
+.paneToggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: 240px 1fr;
+  }
+  .assistant {
+    display: none;
+  }
+  .assistantOpen {
+    display: flex;
+    position: absolute;
+    top: 44px;
+    right: 0;
+    bottom: 26px;
+    width: min(360px, 90vw);
+    z-index: 20;
+    box-shadow: var(--sf-shadow-lg);
+  }
+  .paneToggle {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    display: none;
+  }
+  .sidebarOpen {
+    display: flex;
+    position: absolute;
+    top: 44px;
+    left: 0;
+    bottom: 26px;
+    width: min(280px, 88vw);
+    z-index: 20;
+    box-shadow: var(--sf-shadow-lg);
+  }
+}

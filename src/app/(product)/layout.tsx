@@ -10,13 +10,18 @@ function ProductLayoutContent({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-bg text-text">
-      {/* Desktop Sidebar Wrapper */}
-      <div 
-        className="hidden lg:flex flex-col flex-shrink-0" 
-        style={{ 
-          width: sidebarCollapsed ? 56 : 240, 
+      {/* Desktop Sidebar Wrapper — pinned to the viewport so the nav stays
+          fixed and identical on every page, regardless of page content height. */}
+      <div
+        className="hidden lg:flex flex-col flex-shrink-0"
+        style={{
+          width: sidebarCollapsed ? 56 : 240,
           transition: "width .2s ease-in-out",
-          overflow: "hidden"
+          overflow: "hidden",
+          position: "sticky",
+          top: 0,
+          alignSelf: "flex-start",
+          height: "100vh",
         }}
       >
         <AppSidebar />

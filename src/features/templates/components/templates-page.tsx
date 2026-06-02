@@ -2,6 +2,7 @@
 
 import { Box, Globe, Layers as LayersIcon, Rocket, Server, Sparkles } from "lucide-react";
 import { AppTopbar } from "@/features/shell";
+import { useDisplayName } from "@/features/workspace/api/workspaces";
 
 const Icons = {
   Box,
@@ -22,10 +23,11 @@ const templates = [
 ];
 
 export function TemplatesPage() {
+  const displayName = useDisplayName();
   return (
     <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
       <AppTopbar
-        breadcrumbs={["Acme Studio", "Templates"]}
+        breadcrumbs={[displayName, "Templates"]}
         actions={
           <button className="sf-btn sf-btn--primary sf-btn--sm" type="button">
             <Icons.Rocket size={11} style={{ marginRight: 4 }} /> Start from template

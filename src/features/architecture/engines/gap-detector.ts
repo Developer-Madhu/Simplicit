@@ -20,25 +20,33 @@ export class ArchitectureGapDetector {
     entities.forEach(ent => {
       const name = ent.name.toLowerCase();
       
-      // Hierarchy check (Phase 1 example: document)
-      if (name === "document" || name === "page" || name === "category") {
-        gaps.push({
-          id: `recursive_${name}`,
-          category: "data_model",
-          severity: "critical",
-          description: `Does '${ent.name}' support a recursive hierarchy (parents/children)?`,
-          confidence: 0.5,
-          impact: "Affects table schema and query logic.",
-          requiredForGeneration: true
-        });
+      // Hierarchy check: Check if entity is a known hierarchical type and lacks a recursive relationship
+      if (name === "document" || name === "page" || name === "category" || name === "folder") {
+        const hasRecursiveRelation = ent.relationships.some(r => r.target.toLowerCase() === name || r.target === ent.name);
+        
+        if (!hasRecursiveRelation) {
+          gaps.push({
+            id: `recursive_${name}`,
+            category: "data_model",
+            severity: "critical",
+            entityName: ent.name,
+            description: `Does '${ent.name}' support a recursive hierarchy (parents/children)?`,
+            confidence: 0.5,
+            impact: "Affects table schema and query logic.",
+            requiredForGeneration: true
+          });
+        }
       }
 
-      // Ownership check (Phase 2 example)
-      if (name !== "user" && !ent.relationships.some(r => r.target.toLowerCase() === "user" && r.ownership)) {
+      // Ownership check: Check if any relationship provides explicit ownership (regardless of target name)
+      const hasOwnership = ent.relationships.some(r => r.ownership === true);
+      
+      if (name !== "user" && name !== "account" && name !== "organization" && !hasOwnership) {
         gaps.push({
           id: `ownership_${name}`,
           category: "security",
           severity: "critical",
+          entityName: ent.name,
           description: `Who owns '${ent.name}'? Ownership model is undetermined.`,
           confidence: 0.4,
           impact: "Required for Row-Level Security (RLS) generation.",

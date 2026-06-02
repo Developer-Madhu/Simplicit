@@ -41,6 +41,44 @@ export function useProfile() {
   });
 }
 
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async (updates: { full_name?: string; avatar_url?: string }): Promise<Profile> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Profile;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    }
+  });
+}
+
+/**
+ * Single source of truth for the user's display name across the app.
+ * Reuses the cached `profile` query (no extra request).
+ */
+export function useDisplayName(): string {
+  const { data: profile } = useProfile();
+  return (
+    profile?.full_name?.trim() ||
+    profile?.email?.split("@")[0] ||
+    "You"
+  );
+}
+
 export function useWorkspaces() {
   const supabase = createClient();
 
