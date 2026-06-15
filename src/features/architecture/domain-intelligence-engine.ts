@@ -136,6 +136,10 @@ export class DomainIntelligenceEngine {
     // STEP 6: Graph Reconstruction (Canonical Model)
     const graph = this.buildDomainGraph(entities, roles, workflows, signals, validCapabilities, modules);
 
+    // Phase 6: Apply user wizard answers to the reconstructed graph (the engine
+    // previously stored `answers` in the constructor but never read them).
+    this.applyWizardAnswers(graph);
+
     // Validate capability-entity consistency (Orphan Capabilities check)
     const capabilityValidator = new CapabilityEntityValidator();
     const capabilityValidation = capabilityValidator.validate(capabilities, entities);
@@ -178,6 +182,52 @@ export class DomainIntelligenceEngine {
    */
   private inferRelationships(entities: DomainEntity[], signals: StructuredEvidence[]) {
     // Deprecated in favor of RelationshipReconstructionEngine
+  }
+
+  /**
+   * Phase 6: Apply user wizard answers to the reconstructed domain graph.
+   * Only maps question IDs NOT already handled by mapAnswersToArchitecture
+   * (which covers rbac_model, ai_provider, notification_methods, custom).
+   */
+  private applyWizardAnswers(graph: DomainGraph): void {
+    const answers = this.answers;
+    if (!answers || Object.keys(answers).length === 0) return;
+
+    // Multi-tenancy → inject a tenant discriminator field on every entity.
+    // Wizard option values are "single" | "teams" | "orgs".
+    const tenancy = answers["multi_tenancy"];
+    if (tenancy === "teams" || tenancy === "orgs" || tenancy === "yes") {
+      for (const entity of graph.entities) {
+        const hasTenant = entity.fields.some(
+          (f) => f.name === "tenantId" || f.name === "tenant_id"
+        );
+        if (!hasTenant) {
+          entity.fields = [
+            ...entity.fields,
+            { name: "tenantId", type: "uuid", isNullable: false, evidence: [] },
+          ];
+        }
+      }
+      graph.features = [...(graph.features ?? []), "multi-tenancy"];
+    }
+
+    // Audit logging granularity ("basic" | "detailed" | "none").
+    const audit = answers["audit_granularity"];
+    if (typeof audit === "string" && audit && audit !== "none") {
+      graph.features = [...(graph.features ?? []), `audit:${audit}`];
+    }
+
+    // Analytics scope ("realtime" | "business" | "user_tracking").
+    const analytics = answers["analytics_scope"];
+    if (typeof analytics === "string" && analytics && analytics !== "none") {
+      graph.features = [...(graph.features ?? []), `analytics:${analytics}`];
+    }
+
+    // External integrations (multi-choice array).
+    const integrations = answers["external_integrations"];
+    if (Array.isArray(integrations) && integrations.length > 0) {
+      graph.integrations = [...(graph.integrations ?? []), ...integrations];
+    }
   }
 
   /**
@@ -295,40 +345,152 @@ export class DomainIntelligenceEngine {
   ): DomainEntity[] {
     const entities: DomainEntity[] = [];
     const promotedSet = new Set(promotedEntityNames.map(e => e.toLowerCase()));
-    
+    const emittedNouns = new Set<string>();
+
+    // PASS 1 — existing qualification path (UNCHANGED): backend-shaped evidence
+    // (DATABASE/SCHEMA/API) or CRUD-cluster promotion.
     concepts.forEach((data, name) => {
       const isPromoted = promotedSet.has(name.toLowerCase());
-      
-      // Rule #4: Strict Qualification Pipeline with Scoring
       const qualification = this.qualifier.qualify(name, data.type, data.evidence);
-      
       if (qualification.passed || isPromoted) {
-        const confidence = this.confidenceEngine.calculate(data.evidence);
-        
-        // Distinguish entity type based on persistence evidence
-        const hasPersistence = data.evidence.some(e => e.className === EvidenceClass.DATABASE || e.className === EvidenceClass.API || e.className === EvidenceClass.FORM);
-        const finalType = hasPersistence ? SemanticType.PERSISTENT_ENTITY : SemanticType.REFERENCE_ENTITY;
-
-        entities.push({
-          name,
-          table: this.pluralize(name.toLowerCase()),
-          type: finalType,
-          description: `Reconstructed domain entity representing ${name}`,
-          fields: this.inferFields(name, data.evidence),
-          relationships: [],
-          indexes: ["id"],
-          constraints: [],
-          confidence: Math.round(confidence * 100),
-          evidence: data.evidence,
-          reasoning: isPromoted 
-            ? `Promoted: Identified from CRUD operations cluster.` 
-            : qualification.reason,
-          qualificationPassed: true,
-          qualificationScore: isPromoted ? Math.max(qualification.score, 60) : qualification.score
-        });
+        entities.push(this.buildEntity(name, data, qualification, isPromoted ? "crud" : "qualified"));
+        emittedNouns.add(this.normalizeNoun(name));
       }
     });
+
+    // PASS 2a (Phase L2, primary) — trust the classifier: any concept the
+    // SemanticClassifier already typed as ENTITY IS a domain entity. The score
+    // threshold (60) is backend-evidence-weighted and wrongly rejects frontend
+    // entities (e.g. "Product" scored 55); the threshold only exists to catch
+    // ambiguous/UNKNOWN concepts, which an ENTITY-typed concept is not. Additive,
+    // de-duped against Pass 1.
+    concepts.forEach((data, name) => {
+      if (data.type !== SemanticType.ENTITY) return;
+      const noun = this.normalizeNoun(name);
+      if (emittedNouns.has(noun)) return;
+      const qualification = this.qualifier.qualify(name, data.type, data.evidence);
+      entities.push(this.buildEntity(name, data, qualification, "classifier"));
+      emittedNouns.add(noun);
+    });
+
+    // PASS 2b (Phase L2, secondary/conservative) — a routed noun that ALSO shows
+    // component/state/API evidence. FORM is excluded (groupEvidence shares it to
+    // EVERY concept, so it's no signal). This rescues a real entity the classifier
+    // under-typed without promoting bare routed pages (Login/Logout/Dashboard/
+    // NotFound), which have only ROUTE (+ the shared FORM). Additive, de-duped.
+    const clusterReps = this.promoteFrontendClusters(concepts);
+    clusterReps.forEach((repName, noun) => {
+      if (emittedNouns.has(noun)) return;
+      const data = concepts.get(repName);
+      if (!data) return;
+      const qualification = this.qualifier.qualify(repName, data.type, data.evidence);
+      entities.push(this.buildEntity(repName, data, qualification, "cluster"));
+      emittedNouns.add(noun);
+    });
+
     return entities;
+  }
+
+  /** Builds a DomainEntity from a qualified/promoted concept (shared by all paths). */
+  private buildEntity(
+    name: string,
+    data: { type: SemanticType; evidence: StructuredEvidence[] },
+    qualification: { passed: boolean; score: number; reason: string },
+    source: "qualified" | "crud" | "cluster" | "classifier"
+  ): DomainEntity {
+    let confidence = this.confidenceEngine.calculate(data.evidence);
+    // Phase 5b: boost confidence for entities sourced from graph god-nodes.
+    confidence = this.boostConfidenceForGodNodes(name, confidence);
+
+    // Distinguish entity type based on persistence evidence.
+    const hasPersistence = data.evidence.some(
+      e => e.className === EvidenceClass.DATABASE || e.className === EvidenceClass.API || e.className === EvidenceClass.FORM
+    );
+    const finalType = hasPersistence ? SemanticType.PERSISTENT_ENTITY : SemanticType.REFERENCE_ENTITY;
+    const promoted = source !== "qualified";
+
+    return {
+      name,
+      table: this.pluralize(name.toLowerCase()),
+      type: finalType,
+      description: `Reconstructed domain entity representing ${name}`,
+      fields: this.inferFields(name, data.evidence),
+      relationships: [],
+      indexes: ["id"],
+      constraints: [],
+      confidence: Math.round(confidence * 100),
+      evidence: data.evidence,
+      reasoning:
+        source === "crud" ? `Promoted: Identified from CRUD operations cluster.`
+        : source === "classifier" ? `Promoted: classifier typed this concept as a domain ENTITY.`
+        : source === "cluster" ? `Promoted: routed feature with component/state/API evidence.`
+        : qualification.reason,
+      qualificationPassed: true,
+      qualificationScore: promoted ? Math.max(qualification.score, 60) : qualification.score,
+    };
+  }
+
+  /**
+   * Phase L: normalize a concept name to its domain noun for clustering —
+   * lowercase, strip common UI/page suffixes, naive singularization. So
+   * "ProductPage", "ProductForm", "products" all collapse to "product".
+   */
+  private normalizeNoun(name: string): string {
+    let n = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    n = n.replace(/(page|form|list|detail|details|item|card|modal|view|table|screen|container|wrapper)$/u, "");
+    if (n.length > 3 && n.endsWith("s") && !n.endsWith("ss")) n = n.slice(0, -1);
+    return n;
+  }
+
+  /**
+   * Phase L2: detect frontend entity clusters. Groups concepts by normalized noun,
+   * collects the distinct evidence classes across the cluster, and promotes a noun
+   * whose cluster has ROUTE AND at least one of {STATE, API, SOURCE_CODE,
+   * DEPENDENCY}. FORM is deliberately NOT a signal — groupEvidence shares it to
+   * every concept, so it can't discriminate a real entity from a bare page.
+   * Returns noun -> representative (highest-scoring) concept name. Additive only.
+   */
+  private promoteFrontendClusters(
+    concepts: Map<string, { type: SemanticType, evidence: StructuredEvidence[] }>
+  ): Map<string, string> {
+    const DISCRIMINATING = [
+      EvidenceClass.STATE,
+      EvidenceClass.API,
+      EvidenceClass.SOURCE_CODE,
+      EvidenceClass.DEPENDENCY,
+    ];
+    const ROLE_ACTOR_NOUNS = new Set([
+      "admin", "customer", "lead", "user", "vendor",
+      "owner", "member", "client", "agent", "operator",
+    ]);
+    const clusters = new Map<string, { repName: string; repScore: number; classes: Set<EvidenceClass> }>();
+
+    concepts.forEach((data, name) => {
+      const noun = this.normalizeNoun(name);
+      if (!noun || noun.length < 3) return;
+      let c = clusters.get(noun);
+      if (!c) {
+        c = { repName: name, repScore: -1, classes: new Set<EvidenceClass>() };
+        clusters.set(noun, c);
+      }
+      const score = this.qualifier.qualify(name, data.type, data.evidence).score;
+      if (score > c.repScore) { c.repScore = score; c.repName = name; }
+      for (const e of data.evidence) c.classes.add(e.className);
+    });
+
+    const promoted = new Map<string, string>();
+    clusters.forEach((c, noun) => {
+      // Pass 2b-extended: role/actor nouns promoted on ROUTE alone (they rarely
+      // have a dedicated redux slice/API client, so DISCRIMINATING would miss them).
+      if (ROLE_ACTOR_NOUNS.has(noun.toLowerCase()) && c.classes.has(EvidenceClass.ROUTE)) {
+        promoted.set(noun, c.repName);
+        return;
+      }
+      if (c.classes.has(EvidenceClass.ROUTE) && DISCRIMINATING.some(d => c.classes.has(d))) {
+        promoted.set(noun, c.repName);
+      }
+    });
+    return promoted;
   }
 
   private reconstructWorkflows(concepts: Map<string, { type: SemanticType, evidence: StructuredEvidence[] }>): DomainWorkflow[] {
@@ -424,6 +586,11 @@ export class DomainIntelligenceEngine {
     fields.set("id", { name: "id", type: "uuid", isPrimary: true, isNullable: false, evidence: [] });
     fields.set("created_at", { name: "created_at", type: "timestamp", isPrimary: false, isNullable: false, evidence: [] });
 
+    // Phase 5a: Extract fields directly from AST type definitions — the richest,
+    // most reliable source (actual parsed interface/type/zod fields). Runs before
+    // the keyFiles regex extractors so AST-parsed fields take priority.
+    this.extractFieldsFromTypeDefinitions(entityName, fields);
+
     evidence.forEach(sig => {
       if (!sig.filePath) return;
       const content = this.result.keyFiles.get(sig.filePath);
@@ -443,6 +610,56 @@ export class DomainIntelligenceEngine {
     });
 
     return Array.from(fields.values());
+  }
+
+  /**
+   * Phase 5a: Pull fields straight from the AST type definitions
+   * (astGraph.allTypeDefinitions), matching the entity by name (+ common
+   * suffixes). This is the precise source the pipeline previously bypassed in
+   * favour of regex over a configs-only keyFiles map.
+   */
+  private extractFieldsFromTypeDefinitions(entityName: string, fields: Map<string, any>) {
+    const typeDefs = this.result.astGraph?.allTypeDefinitions;
+    if (!typeDefs || typeDefs.length === 0) return;
+
+    const entityLower = entityName.toLowerCase();
+    for (const typeDef of typeDefs) {
+      const defName = (typeDef.name ?? "").toLowerCase();
+      const matches =
+        defName === entityLower ||
+        defName === entityLower + "s" ||
+        defName === entityLower + "type" ||
+        defName === entityLower + "schema" ||
+        defName === entityLower + "model";
+      if (!matches) continue;
+
+      for (const field of typeDef.fields ?? []) {
+        const name = field.name;
+        if (!name) continue;
+        // Don't override foundation/stronger fields already present.
+        if (!fields.has(name) || fields.get(name).type === "text") {
+          fields.set(name, {
+            name,
+            type: this.mapToDbType(field.type ?? "text"),
+            isNullable: field.optional ?? false,
+            evidence: [],
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Phase 5b: Entities whose source file is a graph god-node (a highly-imported
+   * hub) are almost always genuine domain types — give them a confidence boost.
+   */
+  private boostConfidenceForGodNodes(entityName: string, baseConfidence: number): number {
+    const analytics = this.result.graphAnalytics;
+    if (!analytics || analytics.godNodes.length === 0) return baseConfidence;
+    const isFromGodNode = analytics.godNodes.some((node) =>
+      node.filePath.toLowerCase().includes(entityName.toLowerCase())
+    );
+    return isFromGodNode ? Math.min(1.0, baseConfidence + 0.2) : baseConfidence;
   }
 
   private extractFieldsFromTypes(entityName: string, content: string, sig: StructuredEvidence, fields: Map<string, any>) {
@@ -478,7 +695,8 @@ export class DomainIntelligenceEngine {
       const body = match[2];
       const fieldLines = body.split('\n');
       fieldLines.forEach(line => {
-        const fieldMatch = line.trim().match(/^(\w+):\s*z\.(\w+)\(\)/);
+        // Match base type even with chained validators: z.string().min(2).email() → "string"
+        const fieldMatch = line.trim().match(/^(\w+):\s*z\.(\w+)\s*\(/);
         if (fieldMatch) {
           const name = fieldMatch[1];
           const type = this.mapToDbType(fieldMatch[2]);
@@ -569,41 +787,31 @@ export class DomainIntelligenceEngine {
         });
     });
 
-    // Ensure all qualified entities are present in at least one module
+    // Ensure every entity has its OWN dedicated module. Any entity not already
+    // claimed by a capability-derived module gets a `${entity.name}Module`. This
+    // MUST match the module name that ServiceGenerator AND ApiSurfaceCompiler tag
+    // their output with (both use `${entity.name}Module`), so NestJSGenerator's
+    // `services/apiSurface.filter(x => x.module === mod.name)` actually finds the
+    // per-entity service + controller files.
+    //
+    // M-audit bug this fixes: the previous fallback lumped ALL entities into one
+    // "CoreModule", whose name matched none of the per-entity services → 0 service
+    // files emitted → Stability "0 services" → TestWriterError.
     const assignedEntities = new Set<string>();
-    contexts.forEach(ctx => {
-      ctx.entities.forEach(ent => assignedEntities.add(ent));
-    });
+    contexts.forEach(ctx => ctx.entities.forEach(ent => assignedEntities.add(ent)));
 
     entities.forEach(ent => {
-      if (!assignedEntities.has(ent.name)) {
-        let core = contexts.find(c => c.name === "CoreModule");
-        if (!core) {
-          core = {
-            name: "CoreModule",
-            description: "Default core domain module.",
-            entities: [],
-            services: ["CoreService"],
-            workflows: [],
-            evidence: []
-          };
-          contexts.push(core);
-        }
-        core.entities.push(ent.name);
-        assignedEntities.add(ent.name);
-      }
+      if (assignedEntities.has(ent.name)) return;
+      contexts.push({
+        name: `${ent.name}Module`,
+        description: `Domain module for ${ent.name}.`,
+        entities: [ent.name],
+        services: [`${ent.name}Service`],
+        workflows: [],
+        evidence: [],
+      });
+      assignedEntities.add(ent.name);
     });
-
-    if (contexts.length === 0) {
-        contexts.push({
-            name: "CoreModule",
-            description: "Default core domain module.",
-            entities: entities.map(e => e.name),
-            services: ["CoreService"],
-            workflows: capabilities.map(c => c.name),
-            evidence: []
-        });
-    }
 
     return contexts;
   }

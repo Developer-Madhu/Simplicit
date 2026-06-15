@@ -57,6 +57,10 @@ import {
   analyzeIntentFromAST,
 } from "./ast/ast-domain-inferrers";
 
+// ── NEW: Graph analytics (centrality / god-nodes / communities) ────
+import { GraphAnalyticsEngine } from "./graph/graph-analytics-engine";
+import type { GraphAnalytics } from "./graph/graph-analytics-engine";
+
 // ── Fallback regex inferrers (used if AST produces zero results) ────
 import { inferEntities } from "./entity-inferrer";
 import { inferApiExpectations } from "./api-inferrer";
@@ -225,6 +229,17 @@ export async function analyzeProject(
     }
   }
 
+  // ── 6b. Graph analytics (centrality · god-nodes · communities) ────
+  // Runs on the completed AST graph; absent in context-only mode (no graph).
+  let graphAnalytics: GraphAnalytics | undefined;
+  if (astGraph) {
+    graphAnalytics = new GraphAnalyticsEngine().analyze(astGraph);
+    log(
+      `Graph analytics: ${graphAnalytics.totalFiles} nodes, ${graphAnalytics.totalEdges} edges, ` +
+        `${graphAnalytics.godNodes.length} god nodes, ${graphAnalytics.communities.length} communities`
+    );
+  }
+
   // ── 7. Domain inference — AST-first, regex fallback ──────────────
   progress("Analyzing application domains...");
   await tick(200);
@@ -319,7 +334,11 @@ export async function analyzeProject(
     }
   }
 
-  // ── 9. Key files, documentation (unchanged) ───────────────────────
+  // ── 9. Key files, documentation ───────────────────────────────────
+  // Phase 1 fix: keyFiles previously contained ONLY configs/manifests, which
+  // starved downstream entity/field reconstruction (it regexes over keyFiles).
+  // It now includes primary SOURCE files (the richest source of type/interface
+  // definitions), capped at 200; configs are still kept for stack detection.
   const keyFiles = new Map<string, string>();
   const documentation: Array<{ path: string; content: string }> = [];
   const keyPatterns = [
@@ -328,8 +347,29 @@ export async function analyzeProject(
     ".env.local", "README.md", "components.json",
   ];
 
+  // Primary source files: .ts/.tsx/.js/.jsx — exclude tests, type decls, and
+  // generated/build output. Capped to bound the in-memory + persisted payload.
+  const SOURCE_FILE_CAP = 200;
+  let sourceFileCount = 0;
+  for (const [path, content] of files) {
+    const lower = path.toLowerCase();
+    const isSource =
+      /\.(ts|tsx|js|jsx)$/.test(lower) &&
+      !lower.includes(".test.") &&
+      !lower.includes(".spec.") &&
+      !lower.endsWith(".d.ts") &&
+      !lower.includes("node_modules") &&
+      !lower.includes("__generated__") &&
+      !lower.includes(".next/");
+    if (isSource && sourceFileCount < SOURCE_FILE_CAP) {
+      keyFiles.set(path, content);
+      sourceFileCount++;
+    }
+  }
+
   for (const [path, content] of files) {
     const filename = path.split("/").pop() || "";
+    // Configs are always kept (stack detection); never dropped by the source cap.
     if (keyPatterns.some((pat) => filename.startsWith(pat))) keyFiles.set(path, content);
     if (path.toLowerCase().endsWith(".md") || path.toLowerCase().endsWith(".mdx")) {
       documentation.push({ path, content });
@@ -356,7 +396,17 @@ export async function analyzeProject(
   featureModules.forEach((m: any) => (m.normalizedId = getNormalizedId(m.name)));
   apiExpectations.forEach((ae: any) => (ae.normalizedId = getNormalizedId(`${ae.method}-${ae.path}`)));
 
-  entities.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  // Phase 8: rank god-node-derived entities first (graph centrality), then
+  // alphabetical. There is no dedicated "core entities" wizard question to sort,
+  // so the ranking is applied to the surfaced entity list itself.
+  const isGodNodeEntity = (name: string) =>
+    !!graphAnalytics?.godNodes.some((n) => n.filePath.toLowerCase().includes(name.toLowerCase()));
+  entities.sort((a: any, b: any) => {
+    const ra = isGodNodeEntity(a.name) ? 0 : 1;
+    const rb = isGodNodeEntity(b.name) ? 0 : 1;
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name);
+  });
   workflows.sort((a: any, b: any) => a.name.localeCompare(b.name));
   featureModules.sort((a: any, b: any) => a.name.localeCompare(b.name));
   apiExpectations.sort((a: any, b: any) => `${a.path}-${a.method}`.localeCompare(`${b.path}-${b.method}`));
@@ -414,6 +464,8 @@ export async function analyzeProject(
     analysisLogs,
     // Attach the AST graph for downstream use by the synthesis engine
     astGraph: astGraph ?? undefined,
+    // Attach derived graph analytics (centrality, god-nodes, communities)
+    graphAnalytics: graphAnalytics ?? undefined,
   } as any;
 
   result.clarificationQuestions = generateAdaptiveQuestions(result as any, userPrompt);

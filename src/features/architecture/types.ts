@@ -1,4 +1,13 @@
-import { ConfidenceLevel } from "@/features/ingestion/types";
+import { ConfidenceLevel, SerializableIngestionResult } from "@/features/ingestion/types";
+
+/**
+ * Compact graph-analytics projection (god nodes + communities) persisted with
+ * the ingestion result. Alias of `SerializableIngestionResult["graphAnalytics"]`
+ * so the architect consumes exactly what the ingestion pipeline serializes.
+ */
+export type SerializedGraphAnalytics = NonNullable<
+  SerializableIngestionResult["graphAnalytics"]
+>;
 
 export interface BackendSpecification {
   projectType: string;
@@ -95,6 +104,23 @@ export interface BackendBlueprint {
   securityModel: string;
   readinessScore: number;
   validationErrors: string[];
+  // Feature modules derived from import-graph communities (graph analytics).
+  // Distinct from `modules` (capability-derived BoundedContext projection),
+  // which drives NestJS module/controller emission.
+  featureModules?: BlueprintFeatureModule[];
+  overview?: {
+    name: string;
+    description?: string;
+    type?: string;
+    complexity?: number;
+  };
+}
+
+export interface BlueprintFeatureModule {
+  name: string; // from community dominantName (e.g. "auth", "swap")
+  communityId: number;
+  entityNames: string[]; // tableName values of entities in this community
+  isPrimary: boolean; // true if any entity in this module is a god node
 }
 
 export interface BlueprintBusinessRule {
@@ -149,6 +175,11 @@ export interface BlueprintEntity {
     isOwner?: boolean;
   };
   evidence?: any[];
+  // Graph-analytics context — only populated when import-graph analytics were
+  // available at blueprint time; all three stay undefined otherwise.
+  isPrimary?: boolean; // true if this entity's source file is a god node
+  communityId?: number; // community this entity belongs to (-1 if unassigned)
+  sourceFile?: string; // file path this entity was inferred from
 }
 
 export interface BlueprintField {
@@ -217,6 +248,27 @@ export interface BlueprintPermission {
   role: string;
   action: string;
   resource: string;
+}
+
+// Capability + relationship shapes consumed by the deterministic generators.
+// Permissive by design (blueprint.capabilities / entity.relationships are any[]).
+export interface BlueprintCapability {
+  id?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  associatedEntity?: string;
+  confidence?: number;
+  status?: string;
+  [key: string]: any;
+}
+
+export interface BlueprintRelationship {
+  target: string;
+  type: string;
+  field?: string;
+  foreignKey?: string;
+  [key: string]: any;
 }
 
 export interface ArchitectureReviewState {

@@ -1,4 +1,6 @@
-import { OpenAIService } from "./openai";
+import { AnthropicService } from "./anthropic-service";
+import { NvidiaService } from "./nvidia-service";
+import { resolveProvider } from "./llm-provider";
 import { BackendBlueprint, BlueprintCapability } from "@/features/architecture/types";
 import { ServiceDefinition, DtoDefinition } from "./surface-types";
 import { AIContextBuilder } from "./ai-context-builder";
@@ -17,6 +19,11 @@ export class ServiceLogicAIEngine {
     dtos: DtoDefinition[]
   ): Promise<Record<string, Record<string, string>>> {
     const implementations: Record<string, Record<string, string>> = {};
+
+    // Both providers expose the same static chatComplete(system, user, options?)
+    // contract, so selection is just which class we route the call through.
+    const provider = resolveProvider("generator");
+    const llm = provider === "nvidia" ? NvidiaService : AnthropicService;
 
     for (const service of services) {
       implementations[service.name] = {};
@@ -46,7 +53,7 @@ export class ServiceLogicAIEngine {
             Please implement the logic for the method "${contract.name}".
           `;
           
-          const code = await OpenAIService.chatComplete(BUSINESS_LOGIC_SYSTEM_PROMPT, userPrompt);
+          const code = await llm.chatComplete(BUSINESS_LOGIC_SYSTEM_PROMPT, userPrompt);
           
           const validation = AIOutputValidator.validate(code, allowedRepos, allowedDtos);
           if (!validation.isValid) {

@@ -50,7 +50,29 @@ export function ChunkReloadGuard() {
     };
     const onRejection = (e: PromiseRejectionEvent) => {
       const reason = e?.reason as unknown;
-      recover(typeof reason === "string" ? reason : (reason as Error | undefined)?.message);
+      // Strings and Errors are straightforward. But some APIs (resource loads,
+      // WebSocket/XHR, media, WASM/emscripten loaders) reject with a DOM Event,
+      // which has no `.message` — Next's dev overlay then renders the opaque
+      // "[object Event]". Synthesize a readable message from the Event so the
+      // chunk-error detector can still match, and log what actually failed so
+      // it's debuggable instead of anonymous.
+      let message: string | undefined;
+      if (typeof reason === "string") {
+        message = reason;
+      } else if (typeof Event !== "undefined" && reason instanceof Event) {
+        const target = reason.target as (Element & { src?: string; href?: string; url?: string }) | null;
+        const where = target
+          ? `${target.tagName ?? target.constructor?.name ?? "?"}` +
+            `${target.src ? ` src=${target.src}` : ""}` +
+            `${target.href ? ` href=${target.href}` : ""}` +
+            `${target.url ? ` url=${target.url}` : ""}`
+          : "unknown target";
+        message = `${reason.type} event from ${where}`;
+        console.warn(`[unhandledrejection] DOM Event reason — ${message}`, reason);
+      } else {
+        message = (reason as Error | undefined)?.message;
+      }
+      recover(message);
     };
 
     window.addEventListener("error", onError);

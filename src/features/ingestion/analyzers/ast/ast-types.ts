@@ -105,10 +105,17 @@ export interface ASTImport {
 }
 
 // ─── TypeScript type/interface definition ───────────────────────────
+export interface ASTTypeField {
+  name: string;
+  type: string;
+  optional: boolean;
+  isArray?: boolean;
+}
+
 export interface ASTTypeDefinition {
   name: string;
-  kind: "interface" | "type" | "enum" | "class";
-  fields: Array<{ name: string; type: string; optional: boolean }>;
+  kind: "interface" | "type" | "enum" | "class" | "zod-schema";
+  fields: ASTTypeField[];
   filePath: string;
   line: number;
   confidence: ASTConfidence;

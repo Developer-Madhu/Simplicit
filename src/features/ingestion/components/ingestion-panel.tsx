@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload,
-  Github,
   MessageSquare,
   X,
   FileArchive,
@@ -21,20 +20,18 @@ import {
 import type { IngestionMode, IngestionState, IngestionResult } from "../types";
 import { processZipFile } from "../providers/zip-provider";
 import type { ZipProcessProgress } from "../providers/zip-provider";
-import {
-  parseGitHubUrl,
-  fetchGitHubRepo,
-} from "../providers/github-provider";
-import type { GitHubProgress } from "../providers/github-provider";
 import { analyzeProject } from "../analyzers";
+
+// ZIP upload size guards (Phase X). Processing is entirely client-side
+// (processZipFile/JSZip in the browser), so these are the only size gates.
+const ZIP_SOFT_WARN_BYTES = 50 * 1024 * 1024; // 50MB — soft warning
+const ZIP_HARD_LIMIT_BYTES = 100 * 1024 * 1024; // 100MB — hard reject
 
 interface IngestionPanelProps {
   onComplete: (result: IngestionResult) => void;
   onClose: () => void;
   onFocusPrompt: () => void;
 }
-
-const PAT_KEY = "simplicit_github_pat";
 
 export function IngestionPanel({
   onComplete,
@@ -50,17 +47,13 @@ export function IngestionPanel({
   // ZIP state
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sizeWarning, setSizeWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Optional Graphify graph.json (higher-accuracy extraction)
   const [graphifyText, setGraphifyText] = useState<string | null>(null);
   const [graphifyFileName, setGraphifyFileName] = useState<string | null>(null);
   const graphifyInputRef = useRef<HTMLInputElement>(null);
-
-  // GitHub state
-  const [githubUrl, setGithubUrl] = useState("");
-  const [pat, setPat] = useState("");
-  const [showPat, setShowPat] = useState(false);
 
   // Monorepo selection state
   const [pendingFiles, setPendingFiles] = useState<Map<string, string> | null>(null);
@@ -70,16 +63,6 @@ export function IngestionPanel({
   // Context state
   const [selectedContextFile, setSelectedContextFile] = useState<File | null>(null);
   const contextInputRef = useRef<HTMLInputElement>(null);
-
-  // Load PAT from localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(PAT_KEY);
-    if (stored) {
-      setPat(stored);
-      setShowPat(true);
-    }
-  }, []);
 
   // Handle keyboard escape
   useEffect(() => {
@@ -154,8 +137,16 @@ export function IngestionPanel({
         file.type === "application/zip" ||
         file.type === "application/x-zip-compressed"
       ) {
+        if (file.size > ZIP_HARD_LIMIT_BYTES) {
+          setError(
+            'ZIP file exceeds the 100MB limit. ' +
+            'Make sure to exclude node_modules, .next, dist, and build folders before zipping.'
+          );
+          return;
+        }
         setSelectedFile(file);
         setError(null);
+        setSizeWarning(file.size > ZIP_SOFT_WARN_BYTES);
       } else {
         setError("Please upload a ZIP file. Other formats are not supported yet.");
       }
@@ -171,8 +162,16 @@ export function IngestionPanel({
           file.type === "application/zip" ||
           file.type === "application/x-zip-compressed"
         ) {
+          if (file.size > ZIP_HARD_LIMIT_BYTES) {
+            setError(
+              'ZIP file exceeds the 100MB limit. ' +
+              'Make sure to exclude node_modules, .next, dist, and build folders before zipping.'
+            );
+            return;
+          }
           setSelectedFile(file);
           setError(null);
+          setSizeWarning(file.size > ZIP_SOFT_WARN_BYTES);
         } else {
           setError("Please select a ZIP file.");
         }
@@ -202,6 +201,7 @@ export function IngestionPanel({
 
     setState("uploading");
     setError(null);
+    setSizeWarning(false);
     setProgressMessage("Extracting ZIP archive...");
     setProgressPercent(0);
 
@@ -277,58 +277,6 @@ export function IngestionPanel({
     }
   }, [selectedContextFile, runAnalysis]);
 
-  // ─── GitHub Handlers ────────────────────────────────────────────
-  const processGitHub = useCallback(async () => {
-    const parsed = parseGitHubUrl(githubUrl);
-    if (!parsed) {
-      setError("Invalid GitHub URL. Use format: github.com/user/repo");
-      return;
-    }
-
-    setState("uploading");
-    setError(null);
-    setProgressMessage("Validating repository...");
-    setProgressPercent(10);
-
-    try {
-      const files = await fetchGitHubRepo(
-        parsed.owner,
-        parsed.repo,
-        pat || null,
-        (progress: GitHubProgress) => {
-          if (progress.phase === "fetching-tree") {
-            setProgressMessage(progress.message || "Fetching repository tree...");
-            setProgressPercent(20);
-          } else if (progress.phase === "downloading-files") {
-            const pct =
-              progress.total > 0
-                ? 20 + Math.round((progress.current / progress.total) * 50)
-                : 40;
-            setProgressMessage(
-              progress.message || `Downloading files...`
-            );
-            setProgressPercent(pct);
-          }
-        }
-      );
-
-      if (pat) {
-        localStorage.setItem(PAT_KEY, pat);
-      }
-
-      await runAnalysis(files, "github");
-    } catch (err: any) {
-      setState("error");
-      if (err.isPrivate) {
-        setShowPat(true);
-        setError("This repository appears to be private. Provide a Personal Access Token or connect GitHub to continue.");
-      } else {
-        setError(err.message || "Failed to import GitHub repository");
-      }
-      setProgressPercent(0);
-    }
-  }, [githubUrl, pat, runAnalysis]);
-
   // ─── Prompt-only Handler ────────────────────────────────────────
   const handlePromptOnly = useCallback(() => {
     onClose();
@@ -345,7 +293,6 @@ export function IngestionPanel({
   }> = [
     { id: "context", label: "Context File", icon: FileText, badge: "Recommended" },
     { id: "zip", label: "ZIP Upload", icon: FileArchive },
-    { id: "github", label: "GitHub Import", icon: Github },
     { id: "prompt", label: "Prompt Only", icon: MessageSquare },
   ];
 
@@ -502,25 +449,10 @@ export function IngestionPanel({
             onFileSelect={handleFileSelect}
             onProcess={processZip}
             fileInputRef={fileInputRef}
+            sizeWarning={sizeWarning}
             graphifyFileName={graphifyFileName}
             onGraphifySelect={handleGraphifySelect}
             graphifyInputRef={graphifyInputRef}
-          />
-        )}
-
-        {state !== "selection" && activeTab === "github" && (
-          <GitHubContent
-            url={githubUrl}
-            pat={pat}
-            showPat={showPat}
-            isProcessing={isProcessing}
-            state={state}
-            progressMessage={progressMessage}
-            progressPercent={progressPercent}
-            error={error}
-            onUrlChange={setGithubUrl}
-            onPatChange={setPat}
-            onProcess={processGitHub}
           />
         )}
 
@@ -719,6 +651,7 @@ function ZipContent({
   onFileSelect,
   onProcess,
   fileInputRef,
+  sizeWarning,
   graphifyFileName,
   onGraphifySelect,
   graphifyInputRef,
@@ -736,6 +669,7 @@ function ZipContent({
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onProcess: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  sizeWarning: boolean;
   graphifyFileName: string | null;
   onGraphifySelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   graphifyInputRef: React.RefObject<HTMLInputElement | null>;
@@ -829,6 +763,33 @@ function ZipContent({
           </div>
         )}
       </div>
+
+      {sizeWarning && (
+        <p
+          style={{
+            fontSize: "12px",
+            fontFamily: "var(--sf-font-sans)",
+            color: "var(--sf-warning, #f59e0b)",
+            marginTop: "6px",
+          }}
+        >
+          ⚠ Large file — ensure node_modules, .next, dist, and build folders are excluded to speed up analysis.
+        </p>
+      )}
+
+      {/* Permanent note — always visible when a file is selected */}
+      {selectedFile && !sizeWarning && (
+        <p
+          style={{
+            fontSize: "11px",
+            fontFamily: "var(--sf-font-sans)",
+            opacity: 0.45,
+            marginTop: "4px",
+          }}
+        >
+          node_modules and build folders are automatically excluded.
+        </p>
+      )}
 
       {/* Optional: Graphify graph.json for higher-accuracy extraction */}
       {!isProcessing && (
@@ -938,244 +899,6 @@ function ZipContent({
           >
             <CheckCircle2 size={11} style={{ marginRight: 6 }} />
             Analyze project
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── GitHub Tab Content ─────────────────────────────────────────────
-
-function GitHubContent({
-  url,
-  pat,
-  showPat,
-  isProcessing,
-  state,
-  progressMessage,
-  progressPercent,
-  error,
-  onUrlChange,
-  onPatChange,
-  onProcess,
-}: {
-  url: string;
-  pat: string;
-  showPat: boolean;
-  isProcessing: boolean;
-  state: IngestionState;
-  progressMessage: string;
-  progressPercent: number;
-  error: string | null;
-  onUrlChange: (val: string) => void;
-  onPatChange: (val: string) => void;
-  onProcess: () => void;
-}) {
-  const isValid = parseGitHubUrl(url) !== null;
-
-  return (
-    <div className="sf-col" style={{ gap: 12 }}>
-      {/* URL input */}
-      <div className="sf-col" style={{ gap: 4 }}>
-        <label
-          className="mono"
-          style={{
-            fontSize: 10.5,
-            color: "var(--sf-text-faint)",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-          }}
-        >
-          Repository URL
-        </label>
-        <div
-          className="sf-row"
-          style={{
-            border: "1px solid var(--sf-border)",
-            borderRadius: 8,
-            overflow: "hidden",
-            background: "var(--sf-bg)",
-          }}
-        >
-          <span
-            className="mono"
-            style={{
-              padding: "0 10px",
-              fontSize: 12,
-              color: "var(--sf-text-faint)",
-              borderRight: "1px solid var(--sf-border)",
-              height: 36,
-              display: "flex",
-              alignItems: "center",
-              background: "var(--sf-surface)",
-            }}
-          >
-            <Github size={12} style={{ marginRight: 6 }} />
-          </span>
-          <input
-            value={url}
-            onChange={(e) => onUrlChange(e.target.value)}
-            placeholder="github.com/user/repo"
-            disabled={isProcessing}
-            style={{
-              flex: 1,
-              padding: "0 12px",
-              height: 36,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "var(--sf-text)",
-              fontFamily: "var(--sf-font-mono)",
-              fontSize: 12.5,
-            }}
-          />
-          {isValid && (
-            <span
-              style={{
-                padding: "0 10px",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <CheckCircle2
-                size={13}
-                style={{ color: "oklch(0.78 0.16 145)" }}
-              />
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* PAT input */}
-      {showPat && (
-        <div className="sf-col" style={{ gap: 4 }}>
-          <div className="sf-row" style={{ justifyContent: "space-between" }}>
-            <label
-              className="mono"
-              style={{
-                fontSize: 10.5,
-                color: "var(--sf-text-faint)",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-              }}
-            >
-              Personal Access Token
-            </label>
-            <span className="mono" style={{ fontSize: 9, color: "oklch(0.78 0.16 145)" }}>REQUIRED FOR PRIVATE</span>
-          </div>
-          <input
-            value={pat}
-            onChange={(e) => onPatChange(e.target.value)}
-            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-            type="password"
-            disabled={isProcessing}
-            style={{
-              padding: "0 12px",
-              height: 36,
-              background: "var(--sf-bg)",
-              border: "1px solid var(--sf-border)",
-              borderRadius: 8,
-              outline: "none",
-              color: "var(--sf-text)",
-              fontFamily: "var(--sf-font-mono)",
-              fontSize: 12.5,
-            }}
-          />
-          <span
-            className="mono"
-            style={{ fontSize: 10, color: "var(--sf-text-faint)" }}
-          >
-            Requires repo scope. Stored locally in your browser.
-          </span>
-        </div>
-      )}
-
-      {/* Progress bar */}
-      {isProcessing && (
-        <div className="sf-col" style={{ gap: 6 }}>
-          <div className="sf-row" style={{ gap: 8 }}>
-            <Loader2
-              size={12}
-              className="sf-spin"
-              style={{ color: "var(--sf-blue)" }}
-            />
-            <span
-              className="mono"
-              style={{ fontSize: 11, color: "var(--sf-text-muted)" }}
-            >
-              {progressMessage}
-            </span>
-            <span className="sf-grow" />
-            <span
-              className="mono"
-              style={{ fontSize: 10.5, color: "var(--sf-text-faint)" }}
-            >
-              {progressPercent}%
-            </span>
-          </div>
-          <div
-            style={{
-              height: 3,
-              background: "rgba(255,255,255,0.05)",
-              borderRadius: 999,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${progressPercent}%`,
-                height: "100%",
-                background: "oklch(0.78 0.14 250)",
-                borderRadius: 999,
-                transition: "width .4s cubic-bezier(.2,.7,.3,1)",
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div
-          className="sf-col"
-          style={{
-            gap: 8,
-            padding: "10px 12px",
-            background: "rgba(255,90,90,0.06)",
-            borderRadius: 8,
-            border: "1px solid rgba(255,90,90,0.15)",
-          }}
-        >
-          <div className="sf-row" style={{ gap: 8 }}>
-            <AlertCircle
-              size={13}
-              style={{ color: "var(--sf-red)", flex: "0 0 auto" }}
-            />
-            <span style={{ fontSize: 12, color: "var(--sf-text)", fontWeight: 500 }}>
-              Import Failed
-            </span>
-          </div>
-          <span style={{ fontSize: 12, color: "var(--sf-text-muted)", lineHeight: 1.4 }}>
-            {error}
-          </span>
-        </div>
-      )}
-
-      {/* Action */}
-      {!isProcessing && state !== "ready" && (
-        <div className="sf-row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <button
-            onClick={onProcess}
-            disabled={!isValid}
-            className="sf-btn sf-btn--primary sf-btn--sm"
-            style={{
-              opacity: !isValid ? 0.5 : 1,
-            }}
-            type="button"
-          >
-            <Github size={11} style={{ marginRight: 6 }} />
-            Import repository
           </button>
         </div>
       )}

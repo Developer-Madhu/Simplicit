@@ -36,12 +36,14 @@ export class NestJSGenerator {
     // 2. Generate Modules
     blueprint.modules.forEach(mod => {
       const moduleName = mod.name;
-      const folder = `src/modules/${moduleName.toLowerCase().replace('module', '')}`;
-      
+      const folder = `src/modules/${this.getModuleFolder(mod, blueprint)}`;
+
       files[`${folder}/${moduleName.toLowerCase()}.module.ts`] = this.compileModule(mod);
-      
+
       // Controllers
-      const modApis = apiSurface.filter(api => api.module === moduleName);
+      const modApis = apiSurface.filter(api =>
+        api.module === moduleName && this.isRouteEnabled(api, blueprint)
+      );
       if (modApis.length > 0) {
         files[`${folder}/${moduleName.toLowerCase()}.controller.ts`] = this.compileController(moduleName, modApis);
       }
@@ -60,7 +62,7 @@ export class NestJSGenerator {
     });
 
     // 4. Generate Core files
-    files[`src/app.module.ts`] = this.compileAppModule(blueprint.modules);
+    files[`src/app.module.ts`] = this.compileAppModule(blueprint);
     files[`src/main.ts`] = this.compileMain();
 
     // 5. Generate Health & Utils
@@ -194,11 +196,11 @@ export class ${dto.name} {
     return code;
   }
 
-  private static compileAppModule(modules: any[]): string {
-    const allModules = [...modules, { name: 'CoreModule' }];
+  private static compileAppModule(blueprint: BackendBlueprint): string {
+    const allModules = [...blueprint.modules, { name: 'CoreModule' }];
     const imports = allModules.map(m => m.name).join(', ');
     const importStatements = allModules.map(m => {
-        const path = m.name === 'CoreModule' ? './modules/core/core.module' : `./modules/${m.name.toLowerCase().replace('module', '')}/${m.name.toLowerCase()}.module`;
+        const path = m.name === 'CoreModule' ? './modules/core/core.module' : `./modules/${this.getModuleFolder(m, blueprint)}/${m.name.toLowerCase()}.module`;
         return `import { ${m.name} } from '${path}';`;
     }).join('\n');
 
@@ -322,6 +324,42 @@ ${blueprint.entities.map(e => `- ${e.name}: \`/api/v1/${e.tableName.toLowerCase(
         "drizzle-kit": "^0.20.0"
       }
     }, null, 2);
+  }
+
+  /**
+   * Output folder for a module under src/modules. When the blueprint carries
+   * graph-derived feature modules, entity modules nest under their community
+   * directory (e.g. "auth/user"); otherwise the flat layout is kept.
+   */
+  private static getModuleFolder(mod: any, blueprint: BackendBlueprint): string {
+    const base = mod.name.toLowerCase().replace('module', '');
+    if (!blueprint.featureModules?.length) return base;
+
+    const memberNames: string[] = Array.isArray(mod.entities) ? mod.entities : [];
+    const entity = blueprint.entities.find(e =>
+      `${e.name}Module` === mod.name || memberNames.includes(e.name)
+    );
+    if (!entity || entity.communityId === undefined || entity.communityId === -1) return base;
+
+    const feature = blueprint.featureModules.find(f => f.communityId === entity.communityId);
+    if (!feature) return base;
+
+    const featureSlug = feature.name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!featureSlug || featureSlug === base) return base;
+    return `${featureSlug}/${base}`;
+  }
+
+  /**
+   * Non-primary entities (explicitly marked false by graph analytics) expose a
+   * minimal CRUD surface: list + create (the param-less endpoints). Primary
+   * entities and entities without graph context keep the full surface;
+   * relationship/action endpoints always pass through.
+   */
+  private static isRouteEnabled(api: ApiSurfaceDefinition, blueprint: BackendBlueprint): boolean {
+    if (api.kind !== 'crud') return true;
+    const entity = blueprint.entities.find(e => e.tableName.toLowerCase() === api.resource);
+    if (!entity || entity.isPrimary !== false) return true;
+    return api.params.length === 0;
   }
 
   private static mapMethodDecorator(method: string): string {

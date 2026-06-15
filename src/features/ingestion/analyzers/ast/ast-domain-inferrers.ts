@@ -63,6 +63,12 @@ const IMPLEMENTATION_NOISE = new Set([
   // Next.js data-fetching function names (never domain entities)
   "getserversideprop", "getserversideprops", "getstaticprop",
   "getstaticprops", "getstaticpath", "getstaticpaths",
+  // UI prop / component-state noise (Radix/shadcn + form attrs) — never domain entities
+  "children", "aschild", "disabled", "column", "slot",
+  "classname", "classnames", "styles", "variant", "align",
+  "orientation", "placement", "trigger", "portal", "overlay",
+  "pending", "visible", "hidden", "active", "selected",
+  "focused", "checked", "readonly", "required", "optional", "defaultvalue",
 ]);
 
 // TypeScript utility/error type name suffixes — never business entities
@@ -85,7 +91,39 @@ const UTILITY_TYPE_SUFFIXES = new Set([
   // Common non-entity compound suffixes
   "notfound", "unauthorized", "forbidden", "error",
   "loading", "skeleton", "placeholder", "empty",
+  // UI component / element suffixes — never domain entities
+  "builder", "shell", "switcher", "uploader", "picker", "pattern",
+  "gradient", "button", "link", "email", "icon", "avatar", "image",
+  "logo", "illustration", "animation", "transition", "effect",
+  "tooltip", "popover", "dropdown", "menu", "submenu", "combobox",
+  "select", "checkbox", "radio", "toggle", "switch", "slider",
+  "textarea", "label", "fieldset", "legend",
+  "stepper", "breadcrumb", "pagination", "toolbar", "actionbar",
+  "scrollarea", "resizable", "splitter", "divider", "separator",
+  "preview", "thumbnail", "lightbox", "carousel",
+  "chart", "graph", "gauge", "progress", "meter", "indicator",
+  "spinner", "loader", "overlay", "backdrop", "scrim",
+  "alert", "toast", "snackbar", "callout",
+  "welcome", "onboarding", "splash",
 ]);
+
+// Compound UI/structure noise — never domain entities. The regex form catches
+// compound names like "sectioncolumn" that the exact-match noise lists miss.
+const NOISE_ENTITY_PATTERNS: RegExp[] = [
+  /^section/i, /^layout/i, /^wrapper/i, /^container/i,
+  /^tree$/i, /^node$/i, /^leaf$/i, /^item$/i,
+  /column$/i, /row$/i, /cell$/i,
+  // URL fragments — from axios/fetch base URL parsing
+  /^https?:$/i,           // matches "http:" and "https:"
+  /^localhost/i,          // matches "localhost:5000" etc.
+  /^\d+\.\d+/,            // matches IP addresses like "192.168"
+  /^www\./i,              // matches "www.something"
+  // Route path names — hyphenated page names from React Router
+  // Pattern: contains a hyphen AND ends with a known page suffix
+  /-(dashboard|login|register|page|screen|view|route|panel|modal|form)$/i,
+  // Single-segment generic UI names that got through
+  /^(app|root|main|index|layout|provider|wrapper|context|store)$/i,
+];
 
 // ─── Common domain entity vocabulary (expands the existing list) ─────
 const ENTITY_SIGNALS: Record<string, string[]> = {
@@ -121,6 +159,7 @@ export function inferEntitiesFromAST(
     if (IMPLEMENTATION_NOISE.has(name)) return;
     if (Array.from(UTILITY_TYPE_SUFFIXES).some(s => name.endsWith(s))) return;
     if (/^\d+$/.test(name)) return;
+    if (NOISE_ENTITY_PATTERNS.some((re) => re.test(name))) return;
 
     const entry = entityMap.get(name);
     if (entry) {
@@ -140,12 +179,16 @@ export function inferEntitiesFromAST(
       const scoreBoost = typeDef.fields.length >= 3 ? 60 : 40;
       addSignal(name, scoreBoost, `TypeScript ${typeDef.kind} with ${typeDef.fields.length} fields: ${typeDef.filePath}:${typeDef.line}`);
 
-      // Also add each field name as a signal for related entities
-      for (const field of typeDef.fields) {
-        const fieldLower = field.name.toLowerCase();
-        if (!IMPLEMENTATION_NOISE.has(fieldLower) && !["id", "createdAt", "updatedAt"].includes(field.name)) {
-          // e.g. if Order has a 'product' field → signal for Product entity
-          addSignal(fieldLower, 15, `Field reference in ${typeDef.name}: ${field.name}`);
+      // Only harvest field names as entity signals from domain types, not UI prop bags
+      const isUIPropBag = /Props$|Context$|State$|Config$|Options$|Attrs$|Attributes$|Ref$|Handle$/.test(typeDef.name);
+      if (!isUIPropBag) {
+        // Also add each field name as a signal for related entities
+        for (const field of typeDef.fields) {
+          const fieldLower = field.name.toLowerCase();
+          if (!IMPLEMENTATION_NOISE.has(fieldLower) && !["id", "createdAt", "updatedAt"].includes(field.name)) {
+            // e.g. if Order has a 'product' field → signal for Product entity
+            addSignal(fieldLower, 15, `Field reference in ${typeDef.name}: ${field.name}`);
+          }
         }
       }
     }
@@ -226,7 +269,7 @@ export function inferEntitiesFromAST(
   };
 
   const results: InferredEntity[] = Array.from(entityMap.entries())
-    .filter(([, e]) => e.hints.length >= 2 || e.score >= 50)
+    .filter(([, e]) => e.hints.length >= 3 || e.score >= 60)
     .map(([name, e]) => {
       const conf: ConfidenceLevel =
         e.score >= 90 || e.hints.length >= 4
@@ -539,11 +582,14 @@ function singularize(word: string): string {
     "focus", "genus", "minus", "plus", "virus", "versus",
     "process", "access", "address", "success", "progress",
     "express", "excess", "stress", "compress", "suppress",
+    // Domain words ending in -e/-se whose plurals must not be over-stripped
+    "purchase", "course", "license", "release", "database", "response",
+    "promise", "expense", "invoice", "resource", "service", "interface",
+    "sequence", "preference", "ference", "instance", "evidence",
   ]);
   if (INVARIANT.has(word)) return word;
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
   if (word.endsWith("sses")) return word.slice(0, -2);
-  if (word.endsWith("ses")) return word.slice(0, -2);
   // Only strip trailing 's' if word is plural-shaped (length > 4, not ending in ss/us/is/as)
   if (
     word.endsWith("s") &&

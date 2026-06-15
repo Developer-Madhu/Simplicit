@@ -33,6 +33,7 @@ import type {
   ASTRoute,
   ASTImport,
   ASTTypeDefinition,
+  ASTTypeField,
   ASTDataFlow,
   ASTEvidence,
   ASTConfidence,
@@ -173,7 +174,8 @@ export function parseFile(
       result.imports = extractImports(root, filePath, source);
       const tsTypeDefs = extractTypeDefinitions(root, filePath, source);
       const propTypeDefs = extractPropTypes(root, filePath, source);
-      result.typeDefinitions = [...tsTypeDefs, ...propTypeDefs];
+      const zodTypeDefs = extractZodSchemas(root, filePath, source);
+      result.typeDefinitions = [...tsTypeDefs, ...propTypeDefs, ...zodTypeDefs];
       result.apiCalls = extractAPICallsFromNode(root, filePath, source, knownAxiosInstances);
       result.dataFlows = extractDataFlows(root, filePath, source);
       result.components = extractComponents(root, filePath, source, result, knownAxiosInstances);
@@ -382,6 +384,107 @@ function extractPropTypes(
   });
 
   return defs;
+}
+
+function extractZodSchemas(root: any, filePath: string, source: string): ASTTypeDefinition[] {
+  const results: ASTTypeDefinition[] = [];
+
+  walkNode(root, (node) => {
+    // Match: const/let/var Name = z.object({...}) or export const Name = z.object({...})
+    if (node.type !== "lexical_declaration" && node.type !== "variable_declaration") return;
+
+    const declarators = node.namedChildren.filter((c: any) => c.type === "variable_declarator");
+    for (const declarator of declarators) {
+      const nameNode = declarator.namedChildren.find((c: any) => c.type === "identifier");
+      if (!nameNode) continue;
+      const name = nameNode.text;
+      if (!name) continue;
+      // Accept both PascalCase (ProductSchema) and camelCase (productSchema)
+      // Zod schemas are conventionally camelCase unlike TypeScript interfaces
+      if (!/^[A-Za-z]/.test(name)) continue;
+
+      // Find z.object(...) call on the right-hand side
+      const valueNode = declarator.namedChildren.find((c: any) =>
+        c.type === "call_expression" || c.type === "await_expression"
+      );
+      if (!valueNode) continue;
+
+      const callText = valueNode.text;
+      if (!callText.startsWith("z.object(")) continue;
+
+      const fields: ASTTypeField[] = [];
+
+      // Walk into the call_expression tree to find the z.object() arguments
+      // handles both plain z.object({...}) and chained z.object({...}).refine(...)
+      const findZodObjectArgs = (node: any): any | null => {
+        if (node.type === "call_expression") {
+          const fnNode = node.namedChildren.find((c: any) => c.type === "member_expression" || c.type === "identifier");
+          const fnText = fnNode?.text ?? "";
+          if (fnText === "z.object" || fnText.endsWith(".object")) {
+            return node.namedChildren.find((c: any) => c.type === "arguments");
+          }
+        }
+        // descend through all children so chained calls (z.object({...}).refine(...))
+        // where z.object is nested inside a member_expression are still found
+        for (const child of node.namedChildren) {
+          const found = findZodObjectArgs(child);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const argNode = findZodObjectArgs(valueNode);
+      if (argNode) {
+        const objNode = argNode.namedChildren.find((c: any) => c.type === "object");
+        if (objNode) {
+          for (const pair of objNode.namedChildren) {
+            if (pair.type !== "pair" && pair.type !== "shorthand_property_identifier") continue;
+            const keyNode = pair.namedChildren[0];
+            const valNode = pair.namedChildren[1];
+            if (!keyNode) continue;
+            const fieldName = keyNode.text;
+            let fieldType = "text";
+            if (valNode) {
+              const valText = valNode.text;
+              if (valText.includes("z.string")) fieldType = "varchar";
+              else if (valText.includes("z.number")) fieldType = "integer";
+              else if (valText.includes("z.boolean")) fieldType = "boolean";
+              else if (valText.includes("z.date")) fieldType = "timestamp";
+              else if (valText.includes("z.array")) fieldType = "jsonb";
+              else if (valText.includes("z.object")) fieldType = "jsonb";
+              else if (valText.includes("z.enum")) fieldType = "varchar";
+            }
+            fields.push({
+              name: fieldName,
+              type: fieldType,
+              optional: valNode ? valNode.text.includes(".optional()") || valNode.text.includes(".nullable()") : false,
+              isArray: valNode ? valNode.text.includes("z.array(") : false,
+            });
+          }
+        }
+      }
+
+      const line = (node.startPosition?.row ?? 0) + 1;
+      results.push({
+        name,
+        kind: "zod-schema",
+        fields,
+        filePath,
+        line,
+        confidence: "Deterministic",
+        evidence: {
+          tag: "EXTRACTED",
+          filePath,
+          line,
+          column: nameNode.startPosition?.column ?? 0,
+          snippet: callText.slice(0, 120),
+          confidence: 90,
+        },
+      });
+    }
+  });
+
+  return results;
 }
 
 function extractAPICallsFromNode(
@@ -613,9 +716,21 @@ function extractComponentsAST(
     // Must return JSX
     if (!subtreeContainsJSX(node)) return;
 
-    const name = extractFunctionName(node);
+    let name = extractFunctionName(node);
+
+    // App Router anonymous default exports: export default function() { ... }
+    // derive name from file path e.g. app/(shop)/products/page.tsx → Page
+    if (!name) {
+      const fileName = filePath.split('/').pop()?.replace(/\.(tsx?|jsx?)$/, '') ?? '';
+      // strip route group parens: (shop) → ignore, page → Page
+      const clean = fileName.replace(/^\(.*?\)$/, '').trim();
+      if (clean) {
+        name = clean.charAt(0).toUpperCase() + clean.slice(1);
+      }
+    }
+
     if (!name) return;
-    if (!/^[A-Z]/.test(name)) return; // Must be PascalCase
+    if (!/^[A-Z]/.test(name)) return;
 
     const line = node.startPosition.row + 1;
     const props = extractPropsFromFunction(node, fileResult.typeDefinitions);

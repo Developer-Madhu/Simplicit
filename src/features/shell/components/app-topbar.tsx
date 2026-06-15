@@ -97,16 +97,6 @@ export function AppTopbar({
 
       {actions && <div className={styles.actions}>{actions}</div>}
       
-      <button
-        className="sf-btn sf-btn--ghost sf-btn--sm"
-        style={{ padding: '0 7px' }}
-        aria-label="Notifications"
-        type="button"
-        onClick={() => navigateTo("/settings")}
-      >
-        <Icons.Bell size={14} />
-      </button>
-
       {/* User profile avatar trigger */}
       <div style={{ position: "relative" }}>
         <div 

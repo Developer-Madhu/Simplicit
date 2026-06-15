@@ -10,8 +10,12 @@ import {
   BackendBusinessRule,
   BackendSpecification,
   BackendBlueprint,
+  BlueprintModule,
+  BlueprintEntity,
+  BlueprintFeatureModule,
   ArchitecturePreferences,
-  ResolvedArchitectureState
+  ResolvedArchitectureState,
+  SerializedGraphAnalytics
 } from "./types";
 import { ArchitectureSynthesisEngine } from "./synthesis-engine";
 import { DomainIntelligenceEngine } from "./domain-intelligence-engine";
@@ -181,10 +185,12 @@ export function createBackendSpecification(state: ArchitectureReviewState): Back
  */
 export function generateBackendBlueprint(
   spec: BackendSpecification,
-  resolvedState: ResolvedArchitectureState
+  resolvedState: ResolvedArchitectureState,
+  graphAnalytics?: SerializedGraphAnalytics | null
 ): BackendBlueprint {
   const graph = resolvedState.domainGraph;
-  
+  const graphContext = buildGraphContext(graphAnalytics);
+
   const blueprint: BackendBlueprint = {
     summary: `Verified business architecture. Reconstructed from ${graph.evidence.length} structured repository signals.`,
     modules: graph.modules.map((m: any) => ({
@@ -193,23 +199,29 @@ export function generateBackendBlueprint(
       entities: m.entities,
       services: m.services
     })),
-    entities: graph.entities.map((e: any) => ({
-      name: e.name,
-      tableName: e.table,
-      description: e.description,
-      fields: e.fields.map((f: any) => ({ 
-        name: f.name, 
-        type: f.type, 
-        isPrimary: f.isPrimary,
-        isNullable: f.isNullable,
-        isUnique: f.isUnique,
-        references: f.references
-      })),
-      relationships: e.relationships,
-      indexes: e.indexes,
-      constraints: e.constraints,
-      evidence: e.evidence 
-    })),
+    entities: graph.entities.map((e: any) => {
+      const entityGraph = resolveEntityGraphContext(e, graphContext);
+      return {
+        name: e.name,
+        tableName: e.table,
+        description: e.description,
+        fields: e.fields.map((f: any) => ({
+          name: f.name,
+          type: f.type,
+          isPrimary: f.isPrimary,
+          isNullable: f.isNullable,
+          isUnique: f.isUnique,
+          references: f.references
+        })),
+        relationships: e.relationships,
+        indexes: e.indexes,
+        constraints: e.constraints,
+        evidence: e.evidence,
+        isPrimary: entityGraph?.isPrimary,
+        communityId: entityGraph?.communityId,
+        sourceFile: entityGraph?.sourceFile
+      };
+    }),
     database: {
       type: resolvedState.infrastructure.database,
       tables: graph.entities.map((e: any) => e.table),
@@ -254,10 +266,137 @@ export function generateBackendBlueprint(
     suggestions: resolvedState.suggestions,
     securityModel: `RBAC with Reconstructed Domain Ownership. Roles: ${graph.roles.map((r: any) => r.name).join(", ")}`,
     readinessScore: resolvedState.readinessScore,
-    validationErrors: []
+    validationErrors: [],
+    overview: resolvedState.overview,
   };
 
+  // Group entities into feature modules by import-graph community. Communities
+  // with no recognized entity are dropped; absent analytics leaves the field
+  // undefined so downstream consumers keep their flat-layout behavior.
+  if (graphContext) {
+    const featureModules = graphContext.communities
+      .map((community): BlueprintFeatureModule | null => {
+        const members = blueprint.entities.filter((e) => e.communityId === community.id);
+        if (members.length === 0) return null;
+        return {
+          name: community.dominantName,
+          communityId: community.id,
+          entityNames: members.map((e) => e.tableName),
+          isPrimary: members.some((e) => e.isPrimary === true),
+        };
+      })
+      .filter((m): m is BlueprintFeatureModule => m !== null);
+    blueprint.featureModules = featureModules.length > 0 ? featureModules : undefined;
+  }
+
   return blueprint;
+}
+
+// ─── Graph-analytics → blueprint matching helpers ───────────────────
+
+interface GraphContext {
+  communities: SerializedGraphAnalytics["communities"];
+  /** lowercased god-node path → original path + its community */
+  godNodeFiles: Map<string, { path: string; communityId: number }>;
+  /** lowercased file path → community id + original path */
+  fileCommunityMap: Map<string, { id: number; path: string }>;
+}
+
+function buildGraphContext(
+  analytics?: SerializedGraphAnalytics | null
+): GraphContext | null {
+  if (!analytics) return null;
+  if (analytics.godNodes.length === 0 && analytics.communities.length === 0) return null;
+
+  const godNodeFiles = new Map<string, { path: string; communityId: number }>();
+  for (const node of analytics.godNodes) {
+    godNodeFiles.set(node.filePath.toLowerCase(), {
+      path: node.filePath,
+      communityId: node.communityId,
+    });
+  }
+
+  const fileCommunityMap = new Map<string, { id: number; path: string }>();
+  for (const community of analytics.communities) {
+    for (const file of community.files) {
+      fileCommunityMap.set(file.toLowerCase(), { id: community.id, path: file });
+    }
+  }
+
+  return { communities: analytics.communities, godNodeFiles, fileCommunityMap };
+}
+
+/** Lowercased name variants used to match an entity against file paths. */
+function entityNameVariants(entity: any): string[] {
+  const variants = new Set<string>();
+  for (const raw of [entity.name, entity.table]) {
+    if (!raw) continue;
+    const lower = String(raw).toLowerCase();
+    variants.add(lower);
+    variants.add(lower.replace(/[_\s]+/g, "-"));
+    variants.add(lower.replace(/[_\s-]+/g, ""));
+  }
+  return Array.from(variants);
+}
+
+function resolveEntityGraphContext(
+  entity: any,
+  context: GraphContext | null
+): { isPrimary: boolean; communityId: number; sourceFile?: string } | undefined {
+  if (!context) return undefined;
+
+  const variants = entityNameVariants(entity);
+  const matchesEntity = (filePathLower: string) =>
+    variants.some((v) => filePathLower.includes(v));
+
+  // Evidence file paths give exact membership; name-based path matching is the
+  // fallback (same heuristic boostConfidenceForGodNodes uses).
+  const evidenceFiles: string[] = (entity.evidence ?? [])
+    .map((ev: any) => ev?.filePath)
+    .filter((p: any): p is string => typeof p === "string");
+
+  let godNode: { path: string; communityId: number } | undefined;
+  for (const file of evidenceFiles) {
+    godNode = context.godNodeFiles.get(file.toLowerCase());
+    if (godNode) break;
+  }
+  if (!godNode) {
+    for (const [pathLower, node] of context.godNodeFiles) {
+      if (matchesEntity(pathLower)) {
+        godNode = node;
+        break;
+      }
+    }
+  }
+
+  let communityId = -1;
+  let communityFile: string | undefined;
+  for (const file of evidenceFiles) {
+    const hit = context.fileCommunityMap.get(file.toLowerCase());
+    if (hit) {
+      communityId = hit.id;
+      communityFile = hit.path;
+      break;
+    }
+  }
+  if (communityId === -1) {
+    for (const [pathLower, hit] of context.fileCommunityMap) {
+      if (matchesEntity(pathLower)) {
+        communityId = hit.id;
+        communityFile = hit.path;
+        break;
+      }
+    }
+  }
+  // A god-node entity always inherits its node's community — guarantees no
+  // entity ends up isPrimary=true with communityId=-1.
+  if (communityId === -1 && godNode) communityId = godNode.communityId;
+
+  return {
+    isPrimary: godNode !== undefined,
+    communityId,
+    sourceFile: godNode?.path ?? communityFile ?? evidenceFiles[0],
+  };
 }
 
 function synthesizeBlueprintApis(entities: any[], capabilities: any[]): any[] {
@@ -297,5 +436,24 @@ function synthesizeBlueprintApis(entities: any[], capabilities: any[]): any[] {
   });
 
   return apis;
+}
+
+/**
+ * Phase P: build per-entity modules for entities the user added in the
+ * EntityFieldsWizard. Names follow the same `${entity.name}Module` /
+ * `${entity.name}Service` convention ServiceGenerator + ApiSurfaceCompiler use,
+ * so NestJSGenerator's module/service filter matches and emits their files.
+ */
+export function createModulesForNewEntities(
+  existingModules: BlueprintModule[],
+  addedEntities: BlueprintEntity[]
+): BlueprintModule[] {
+  const newModules = addedEntities.map((entity) => ({
+    name: `${entity.name}Module`,
+    description: `${entity.name} management module`,
+    entities: [entity.name],
+    services: [`${entity.name}Service`],
+  }));
+  return [...existingModules, ...newModules];
 }
 

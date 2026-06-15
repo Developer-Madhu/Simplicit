@@ -235,6 +235,10 @@ export interface DomainGraph {
   evidence: StructuredEvidence[];
   nodes: DomainNode[]; // Keep for visualization mapping
   edges: DomainEdge[]; // Keep for visualization mapping
+  // Phase 6: user-wizard-derived feature flags + integrations, captured from
+  // clarification answers. NOTE: not yet consumed by the blueprint builder.
+  features?: string[];
+  integrations?: string[];
 }
 
 export interface ArchitectureRule {

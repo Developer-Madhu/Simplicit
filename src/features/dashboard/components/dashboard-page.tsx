@@ -29,14 +29,6 @@ const STATUS = {
   paused:   { dot: 'gray',  label: 'Paused' },
 } as const;
 
-const activity = [
-  { t: 'Examly API',         a: 'deployed to production',     by: 'Alex Chen',  when: '12m ago', dot: 'green' },
-  { t: 'Loop Marketplace',   a: 'regenerated payments module', by: 'Simplicit',  when: '47m ago', dot: 'blue' },
-  { t: 'Nova LMS',           a: 'pushed to acme/nova-lms',     by: 'Priya O.',   when: '2h ago',  dot: 'gray' },
-  { t: 'Brief AI',           a: 'created from prompt',         by: 'Sam V.',     when: '5h ago',  dot: 'purple' },
-  { t: 'Tessera Billing',    a: 'failed env validation',       by: 'Simplicit',  when: '1d ago',  dot: 'amber' },
-];
-
 interface SparkProps {
   data: number[];
   width?: number;
@@ -82,23 +74,6 @@ function StatTile({ label, value, delta, deltaKind = 'up', sparkline }: StatTile
         <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: '-0.02em' }}>{value}</span>
         {sparkline && <div className="sf-grow" style={{ display: 'flex', justifyContent: 'flex-end' }}>{sparkline}</div>}
       </div>
-    </div>
-  );
-}
-
-interface ProgressProps {
-  value?: number;
-  height?: number;
-  color?: string;
-}
-
-function Progress({ value = 0, height = 4, color = 'var(--sf-text)' }: ProgressProps) {
-  return (
-    <div style={{ height, background: 'rgba(255,255,255,0.05)', borderRadius: 999, overflow: 'hidden' }}>
-      <div style={{
-        width: `${value}%`, height: '100%', background: color, borderRadius: 999,
-        transition: 'width .4s cubic-bezier(.2,.7,.3,1)',
-      }} />
     </div>
   );
 }
@@ -434,7 +409,7 @@ export function DashboardPage() {
               No projects yet
             </h2>
             <p className="sf-muted" style={{ fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 }}>
-              Describe what you want to build. StackForge will design a backend,
+              Describe what you want to build. Simplicit will design a backend,
               generate the code, and let you deploy it in minutes.
             </p>
             <div className="sf-row" style={{ gap: 8, justifyContent: 'center' }}>
@@ -490,9 +465,7 @@ export function DashboardPage() {
             {/* Stat row */}
             <div className={styles.statsGrid}>
               <StatTile label="Active projects" value={dbProjects.length.toString()} delta="" sparkline={<Spark data={[0, 0, 0, 0, 0, 0, dbProjects.length]} />} />
-              <StatTile label="Generations this month" value="0" delta="" sparkline={<Spark data={[0,0,0,0,0,0,0]} color="oklch(0.74 0.16 250)" />} />
               <StatTile label="Deployments" value={dbProjects.filter(p => p.status === 'deployed').length.toString()} delta="" sparkline={<Spark data={[0, 0, 0, 0, 0, 0, dbProjects.filter(p => p.status === 'deployed').length]} color="oklch(0.78 0.18 145)" />} />
-              <StatTile label="Avg. uptime" value="—" delta="" sparkline={<Spark data={[0,0,0,0,0,0,0]} />} />
             </div>
 
             {/* Filters + view */}
@@ -703,40 +676,20 @@ export function DashboardPage() {
                   <span className="sf-h2 sf-grow" style={{ margin: 0 }}>Activity</span>
                   <button className="sf-btn sf-btn--ghost sf-btn--sm" type="button">View all</button>
                 </div>
-                <div className="sf-col">
-                  {activity.map((act, i) => (
-                    <div key={i} className="sf-row" style={{ padding: '12px 18px', gap: 12, borderBottom: i < activity.length - 1 ? '1px solid var(--sf-border)' : 'none' }}>
-                      <span className={`sf-dot sf-dot--${act.dot}`} />
-                      <div className="sf-grow">
-                        <span style={{ fontSize: 13 }}><span style={{ fontWeight: 500 }}>{act.t}</span> {act.a}</span>
-                        <div className="sf-faint" style={{ fontSize: 11.5, marginTop: 1 }}>{act.by}</div>
-                      </div>
-                      <span className="sf-faint" style={{ fontSize: 11.5 }}>{act.when}</span>
-                    </div>
-                  ))}
+                <div style={{
+                  padding: "24px",
+                  opacity: 0.5,
+                  fontFamily: "var(--sf-font-sans)",
+                  fontSize: "13px",
+                }}>
+                  Activity feed coming soon.
                 </div>
               </div>
               <div className="sf-card" style={{ padding: 18 }}>
                 <div className="sf-h2" style={{ marginBottom: 6, marginTop: 0 }}>Usage</div>
-                <p className="sf-faint" style={{ fontSize: 12, margin: '0 0 18px' }}>This billing cycle, resets Aug 1.</p>
-                {[
-                  { l: 'Generations', v: '42 / 100', pct: 42 },
-                  { l: 'Build minutes', v: '184 / 500', pct: 36.8 },
-                  { l: 'Storage', v: '1.2 / 5 GB', pct: 24 },
-                  { l: 'Team seats', v: '3 / 5', pct: 60 },
-                ].map(u => (
-                  <div key={u.l} style={{ marginBottom: 12 }}>
-                    <div className="sf-row" style={{ marginBottom: 6 }}>
-                      <span style={{ fontSize: 12.5 }}>{u.l}</span>
-                      <span className="sf-grow" />
-                      <span className="mono sf-faint" style={{ fontSize: 11 }}>{u.v}</span>
-                    </div>
-                    <Progress value={u.pct} />
-                  </div>
-                ))}
-                <button className="sf-btn sf-btn--sm" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} type="button">
-                  Upgrade plan <Icons.ArrowR size={11} style={{ marginLeft: 6 }} />
-                </button>
+                <div style={{ opacity: 0.5, fontSize: "13px" }}>
+                  Usage tracking coming soon.
+                </div>
               </div>
             </div>
           </div>

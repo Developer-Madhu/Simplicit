@@ -415,6 +415,7 @@ export interface IngestionResult {
   simplicitContext?: SimplicitContext;
   clarificationQuestions?: ClarificationQuestion[];
   astGraph?: import("./analyzers/ast/ast-types").SimplicitASTGraph;
+  graphAnalytics?: import("./analyzers/graph/graph-analytics-engine").GraphAnalytics;
 }
 
 // ─── Serializable version for API payloads ──────────────────────────
@@ -432,6 +433,14 @@ export interface SerializableIngestionResult {
   analysisLogs?: string[];
   simplicitContext?: SimplicitContext;
   clarificationQuestions?: ClarificationQuestion[];
+  // Lightweight derived analytics — safe to persist as JSON. The full in-memory
+  // GraphAnalytics (nodeMetrics Map) and astGraph are intentionally NOT persisted.
+  graphAnalytics?: {
+    godNodes: Array<{ filePath: string; inDegree: number; centralityScore: number; communityId: number }>;
+    communities: Array<{ id: number; files: string[]; dominantName: string }>;
+    totalFiles: number;
+    totalEdges: number;
+  };
 }
 
 // ─── Project Context (combined ingestion + prompt for generation) ───
@@ -459,5 +468,36 @@ export function serializeIngestionResult(
     simplicitContext: result.simplicitContext,
     clarificationQuestions: result.clarificationQuestions,
     analysisLogs: result.analysisLogs,
+    // Phase 4: persist the compact graph-analytics projection (god-nodes +
+    // communities). Absent in context-only mode (no AST graph was built).
+    graphAnalytics: result.graphAnalytics
+      ? {
+          godNodes: result.graphAnalytics.godNodes.map((n) => ({
+            filePath: n.filePath,
+            inDegree: n.inDegree,
+            centralityScore: n.centralityScore,
+            communityId: n.communityId,
+          })),
+          communities: result.graphAnalytics.communities.map((c) => ({
+            id: c.id,
+            files: c.files,
+            dominantName: c.dominantName,
+          })),
+          totalFiles: result.graphAnalytics.totalFiles,
+          totalEdges: result.graphAnalytics.totalEdges,
+        }
+      : undefined,
   };
+}
+
+/**
+ * Phase 4: typed inverse of serializeIngestionResult. The persisted payload is
+ * already plain JSON, so this is a typed pass-through. `graphAnalytics` is the
+ * lightweight projection (no nodeMetrics Map, no astGraph — those are never
+ * persisted). Exists so editor/read-side consumers get a typed handle.
+ */
+export function deserializeIngestionResult(
+  serialized: SerializableIngestionResult
+): SerializableIngestionResult {
+  return serialized;
 }

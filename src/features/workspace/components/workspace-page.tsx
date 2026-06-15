@@ -4,26 +4,23 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCreateProject, useUpdateProject } from "@/features/dashboard";
+import { useCreateProject } from "@/features/dashboard";
 import { useToast } from "@/features/auth/context/toast-context";
 import { sanitizePrompt } from "@/lib/prompt-sanitizer";
 import { useAuth } from "@/features/auth/context/auth-context";
 import { useWorkspace } from "@/features/workspace/context/workspace-context";
-import type { IngestionResult, ClarificationQuestion } from "@/features/ingestion/types";
+import type { IngestionResult } from "@/features/ingestion/types";
 import { serializeIngestionResult } from "@/features/ingestion/types";
+// Editor-first flow (Phase D): analysis completion creates a draft project and
+// hands the in-memory result to the IDE via the flow store. The wizard, the
+// pipeline status panel, and deployment all live in /generations/{id} now.
+import { setFlowState } from "@/features/generation/state/generation-flow-store";
 import { IngestionPanel } from "@/features/ingestion/components/ingestion-panel";
+import { GitHubRepoSelector } from "@/features/ingestion/components/github-repo-selector";
+import { processZipFile } from "@/features/ingestion/providers/zip-provider";
+import { analyzeProject } from "@/features/ingestion/analyzers";
 import { AnalysisSummary } from "@/features/ingestion/components/analysis-summary";
 import { ContextGeneratorHub } from "@/features/generation";
-import { ClarificationQuestions } from "@/features/ingestion/components/clarification-questions";
-import { generateClarificationQuestions, mapAnswersToArchitecture } from "@/features/ingestion/analyzers/question-generator";
-import { 
-  ArchitectureReview, BackendSpecification, BackendBlueprint, BlueprintReview, 
-  generateBackendBlueprint, detectArchitectureRequirements, ArchitectureRequirements, 
-  ArchitecturePreferences, StackSelectionWizard, DomainIntelligenceEngine,
-  GapResolutionWizard, GapQuestion, GapResolutionAnswer, generateGapQuestions, applyGapResolutionsToGraph,
-  resolveArchitectureState, ResolvedArchitectureState
-} from "@/features/architecture";
 import {
   Check,
   Download,
@@ -405,60 +402,29 @@ function Progress({ value = 0, height = 4, color = 'var(--sf-text)' }: ProgressP
 
 export function WorkspacePage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const createMutation = useCreateProject();
-  const updateMutation = useUpdateProject();
 
-  const [stage, setStage] = useState<'idle' | 'composing' | 'analyzing' | 'stack-selection' | 'clarifying' | 'reviewing' | 'blueprinting' | 'streaming' | 'done' | 'failed'>('idle');
-  const [architectureRequirements, setArchitectureRequirements] = useState<ArchitectureRequirements | null>(null);
-  const [architecturePreferences, setArchitecturePreferences] = useState<ArchitecturePreferences | null>(null);
-  const [architectureConfigured, setArchitectureConfigured] = useState(false);
-  const [gapResolutionQuestions, setGapResolutionQuestions] = useState<GapQuestion[]>([]);
-  const [resolvedGapAnswers, setResolvedGapAnswers] = useState<GapResolutionAnswer[]>([]);
+  // Editor-first flow: the workspace only composes/uploads/analyzes. The
+  // wizard, pipeline, and deploy views live in the IDE (/generations/{id}).
+  const [stage, setStage] = useState<'idle' | 'composing'>('idle');
   const [prompt, setPrompt] = useState('');
-  const [streamStep, setStreamStep] = useState(0); 
   const [previewTab, setPreviewTab] = useState<'arch' | 'schema' | 'routes' | 'files'>('arch');
-  const [stack, setStack] = useState('Hono');
+  const [stack] = useState('Hono');
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [failureDetails, setFailureDetails] = useState<{
-    message: string;
-    isConflict: boolean;
-    isKeyMissing: boolean;
-    prompt: string;
-    stack: string;
-    projectId: string;
-  } | null>(null);
 
   // Ingestion state
   const [showIngestionPanel, setShowIngestionPanel] = useState(false);
+  const [showRepoSelector, setShowRepoSelector] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubUsername, setGithubUsername] = useState<string | null>(null);
   const [ingestionResult, setIngestionResult] = useState<IngestionResult | null>(null);
-  const [clarificationQuestions, setClarificationQuestions] = useState<ClarificationQuestion[]>([]);
-  const [clarificationAnswers, setClarificationAnswers] = useState<Record<string, string | string[]>>({});
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [backendSpec, setBackendSpec] = useState<BackendSpecification | null>(null);
-  const [blueprint, setBlueprint] = useState<BackendBlueprint | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-  // Canonical Architecture State (Single Source of Truth)
-  const resolvedArchitecture = useMemo(() => {
-    if (!ingestionResult) return null;
-    return resolveArchitectureState(
-      ingestionResult,
-      answers,
-      prompt || heroPrompt,
-      architecturePreferences,
-      resolvedGapAnswers,
-      gapResolutionQuestions
-    );
-  }, [ingestionResult, answers, prompt, architecturePreferences, resolvedGapAnswers, gapResolutionQuestions]);
 
   // Restore draft and history on mount
   useEffect(() => {
@@ -470,41 +436,36 @@ export function WorkspacePage() {
     setHistory(loadHistory());
   }, []);
 
+  // GitHub: connection status (for the toolbar button) + post-OAuth return handling.
+  useEffect(() => {
+    // Reflect connection status in the toolbar so returning users don't re-auth.
+    fetch('/api/auth/github/token')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.connected) {
+          setGithubConnected(true);
+          setGithubUsername(data.username ?? null);
+        }
+      })
+      .catch(() => {});
+
+    // If we just came back from the OAuth flow, drop the user straight into the
+    // repo picker, confirm with a toast, and strip the query param (no reload).
+    if (typeof window !== 'undefined' && window.location.search.includes('github_connected=true')) {
+      toast('GitHub connected — select a repository to import.', 'success');
+      setShowRepoSelector(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('github_connected');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Autosave draft as user types
   useEffect(() => {
     if (stage === 'idle' || stage === 'composing') {
       saveDraft(prompt);
     }
   }, [prompt, stage]);
-
-  useEffect(() => {
-    if (stage === 'streaming' || stage === 'done') {
-      setIsPanelOpen(true);
-    }
-  }, [stage]);
-
-  // Run the streaming animation
-  useEffect(() => {
-    if (stage !== 'streaming') return;
-    if (streamStep >= reasoning.length) {
-      const t = setTimeout(() => {
-        setStage('done');
-        // Update project to deployed on completion
-        if (activeProjectId) {
-          updateMutation.mutate({
-            id: activeProjectId,
-            status: 'deployed',
-            dot: 'green',
-            health: 100,
-          });
-          toast('Generation complete! Your backend is ready.', 'success');
-        }
-      }, 500);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => setStreamStep(s => s + 1), reasoning[streamStep].dur);
-    return () => clearTimeout(t);
-  }, [stage, streamStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cmd+K palette
   useEffect(() => {
@@ -516,25 +477,30 @@ export function WorkspacePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const executeGeneration = useCallback(async (isLocalRun?: boolean, finalAnswers?: Record<string, string | string[]>, spec?: BackendSpecification, bprint?: BackendBlueprint) => {
-    if (!activeWorkspace) return;
-    const finalPrompt = prompt.trim() || heroPrompt;
-    let createdId = "";
 
-    setStage('streaming');
-    setStreamStep(0);
+  const handleHistorySelect = (historyPrompt: string) => {
+    setPrompt(historyPrompt);
+    setStage('composing');
+    setShowHistory(false);
+  };
 
-    const mappedRequirements = finalAnswers ? mapAnswersToArchitecture(finalAnswers) : mapAnswersToArchitecture(answers);
+  // Editor-first flow: create the project row immediately (status 'draft'),
+  // stash the in-memory analysis in the flow store — the full IngestionResult
+  // cannot survive serialization — and hand off to the IDE, which runs the
+  // wizard and the pipeline. `result` is absent for the prompt-only flow.
+  const handleAnalysisCompleteAndNavigate = useCallback(async (result?: IngestionResult) => {
+    if (!activeWorkspace) {
+      toast('No active workspace — cannot create a project.', 'error');
+      return;
+    }
 
-    // Create project in Supabase with "building" status.
-    // Stack string is composed from the user's actual wizard selections when
-    // available, falling back to the framework default only if none were made.
-    const prefs = architecturePreferences;
-    const stackParts = [stack, prefs?.database, prefs?.authentication].filter(Boolean) as string[];
-    const fullStack = stackParts.length > 1 ? stackParts.join(' \u00b7 ') : (stackMap[stack] || `${stack} \u00b7 PG \u00b7 Redis`);
+    const finalPrompt = prompt.trim() ||
+      (result?.metadata.name
+        ? `Build a production-ready backend for ${result.metadata.name}` +
+          (result.metadata.description ? ` — ${result.metadata.description}` : '') +
+          (result.framework.name !== 'Unknown' ? `. Frontend uses ${result.framework.name}.` : '.')
+        : 'New backend project');
 
-    // Clean, readable project name derived from the prompt \u2014 preserve spacing,
-    // hyphens and capitalization instead of mangling words together.
     const derivedName = finalPrompt
       .trim()
       .split(/\s+/)
@@ -543,128 +509,50 @@ export function WorkspacePage() {
       .replace(/[^\w\s-]/g, '')
       .replace(/\b\w/g, (c) => c.toUpperCase())
       .trim();
+
     try {
       const project = await createMutation.mutateAsync({
         name: derivedName || 'New Project',
         prompt: finalPrompt,
-        stack: fullStack,
+        stack,
         workspace_id: activeWorkspace.id,
-        status: 'building',
-        dot: 'amber',
-        health: 50,
+        status: 'draft',
+        dot: 'gray',
+        health: null,
         generation_metadata: {
-          ingestion: ingestionResult ? serializeIngestionResult(ingestionResult) : null,
-          clarification: finalAnswers || answers,
-          requirements: mappedRequirements,
-          specification: spec || backendSpec,
-          blueprint: bprint || blueprint,
-          preferences: architecturePreferences,
+          ingestion: result ? serializeIngestionResult(result) : null,
+          // Persist the analyzed frontend source (path → content) so the IDE
+          // explorer can show it immediately — serializeIngestionResult drops
+          // keyFiles, and the in-memory flow store is lost on hard refresh.
+          source_files: result ? Object.fromEntries(result.keyFiles) : undefined,
         },
-        simplicit_context: ingestionResult?.simplicitContext || null
+        simplicit_context: result?.simplicitContext || null,
       });
-      createdId = project.id;
-      setActiveProjectId(project.id);
-    } catch (e) {
-      toast('Failed to initialize project in database.', 'error');
-      setStage('idle');
+
+      setFlowState(project.id, {
+        ingestionResult: result,
+        prompt: finalPrompt,
+        stack,
+        answers: {},
+        clarificationQuestions: result?.clarificationQuestions ?? [],
+        createdAt: Date.now(),
+      });
+
+      router.push(`/generations/${project.id}?flow=new`);
+    } catch {
+      toast('Failed to initialize project — staying in the workspace.', 'error');
+    }
+  }, [activeWorkspace, prompt, stack, createMutation, router, toast]);
+
+  // Generate button (prompt-only or with an attached analysis): validate the
+  // prompt, then hand off to the IDE the same way analysis completion does.
+  const startGeneration = useCallback(async () => {
+    const finalPrompt = prompt.trim();
+    if (!finalPrompt) {
+      toast('Please describe what you want to build before generating.', 'error');
+      promptRef.current?.focus();
       return;
     }
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: createdId,
-          prompt: finalPrompt,
-          stack: stack,
-          localMode: isLocalRun || false,
-          context: ingestionResult ? serializeIngestionResult(ingestionResult) : null,
-          clarification: finalAnswers || answers,
-          requirements: mappedRequirements,
-          specification: spec || backendSpec,
-          blueprint: bprint || blueprint,
-          preferences: architecturePreferences,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        let textErr = `Generation API returned status ${response.status}`;
-        try {
-          const jsonErr = await response.json();
-          textErr = jsonErr.error || textErr;
-        } catch {}
-        throw new Error(textErr);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('ReadableStream is not supported.');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.stage === 'done') {
-                setStreamStep(reasoning.length);
-                setStage('done');
-                toast('Generation complete! Your backend is ready.', 'success');
-
-                // Priority 4: Invalidate projects to ensure the new one exists in next view
-                queryClient.invalidateQueries({ queryKey: ["projects"] });
-
-                setTimeout(() => {
-                  router.push(`/generations/${createdId}`);
-                }, 800);
-              }
- else if (data.stage === 'error') {
-                throw new Error(data.error || 'Pipeline execution failed');
-              } else {
-                const stageIdx = ['analyzing', 'architecture', 'schema', 'routes', 'files'].indexOf(data.stage);
-                if (stageIdx !== -1) setStreamStep(stageIdx);
-              }
-            } catch (err) {
-              // Error parsing SSE event
-            }
-          }
-        }
-      }
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      setFailureDetails({
-        message: err.message || 'Generation failed.',
-        isConflict: err.message?.includes('ConflictError'),
-        isKeyMissing: err.message?.includes('KeyMissingError'),
-        prompt: finalPrompt,
-        stack: stack,
-        projectId: createdId,
-      });
-      setStage('failed');
-      toast(err.message, 'error');
-    } finally {
-      abortControllerRef.current = null;
-    }
-  }, [prompt, stack, createMutation, router, toast, ingestionResult, answers]);
-
-  const startGeneration = useCallback(async (isLocalRun?: boolean | React.MouseEvent) => {
-    const finalPrompt = prompt.trim() || heroPrompt;
-    if (!prompt.trim()) setPrompt(finalPrompt);
 
     // Client-side prompt safety check (blocks credential paste / injection early;
     // the API route re-validates server-side as the source of truth).
@@ -675,111 +563,50 @@ export function WorkspacePage() {
     }
     sanitized.warnings.forEach(w => toast(w, 'info'));
 
-    setFailureDetails(null);
     pushHistory(finalPrompt);
     setHistory(loadHistory());
     saveDraft('');
 
-    const realLocalMode = typeof isLocalRun === 'boolean' ? isLocalRun : false;
+    await handleAnalysisCompleteAndNavigate(ingestionResult ?? undefined);
+  }, [prompt, ingestionResult, handleAnalysisCompleteAndNavigate, toast]);
 
-    // Prompt-only flow (no ingestion upload → no resolved architecture):
-    // skip the architecture-review pipeline and generate directly from the
-    // prompt. The upload-based flow below is unchanged.
-    if (!resolvedArchitecture) {
-      executeGeneration(realLocalMode);
-      return;
-    }
+  // Shared completion handler — used by both the IngestionPanel (ZIP/context) and
+  // the GitHub repo import below, so the analysis-result wiring isn't duplicated.
+  const handleIngestionComplete = useCallback((result: IngestionResult) => {
+    setIngestionResult(result);
+    setShowIngestionPanel(false);
+    void handleAnalysisCompleteAndNavigate(result);
+  }, [handleAnalysisCompleteAndNavigate]);
 
-    // Phase 3: Route to Stack Selection Wizard if not configured
-    if (!architectureConfigured && stage !== 'stack-selection') {
-      const requirements = detectArchitectureRequirements(resolvedArchitecture.domainGraph);
-      
-      setArchitectureRequirements(requirements);
-      console.log('Analysis Complete -> stack-selection');
-      setStage('stack-selection');
-      return;
-    }
-
-    // Phase 12: Trigger Gap Resolution Engine if there are unresolved critical gaps
-    if (gapResolutionQuestions.length === 0) {
-        const generatedQuestions = generateGapQuestions(resolvedArchitecture.remainingGaps);
-        if (generatedQuestions.length > 0) {
-            setGapResolutionQuestions(generatedQuestions);
-            console.log('Stack Selection Complete -> gap-resolution');
-            setStage('clarifying'); 
-            return;
-        }
-    }
-
-    // NEW: If we have ingestion result but haven't reviewed yet, go to architecture review
-    if (!backendSpec && stage !== 'reviewing') {
-      setStage('reviewing');
-      return;
-    }
-
-    // NEW: If we have spec but no blueprint, go to blueprinting
-    if (backendSpec && !blueprint && stage !== 'blueprinting') {
-      setStage('blueprinting');
-      return;
-    }
-
-    executeGeneration(realLocalMode);
-  }, [prompt, ingestionResult, architectureConfigured, clarificationQuestions.length, executeGeneration, answers]);
-
-  const stopGeneration = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    // Update project to paused if we have an active one
-    if (activeProjectId) {
-      updateMutation.mutate({
-        id: activeProjectId,
-        status: 'paused',
-        dot: 'gray',
-        health: null,
+  // GitHub "Connect repo": download the repo zipball via our server route (the
+  // token stays server-side), then reuse the SAME processZipFile → analyzeProject
+  // path that ZIP upload uses — nothing in the analysis pipeline changes.
+  const handleRepoSelected = useCallback(async (sel: { owner: string; repo: string; branch: string }) => {
+    setShowRepoSelector(false);
+    try {
+      toast(`Importing ${sel.owner}/${sel.repo}…`, "info");
+      const res = await fetch("/api/github/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sel),
       });
-      toast('Generation stopped. Project saved as paused.', 'info');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Download failed (${res.status})`);
+      }
+      const buf = await res.arrayBuffer();
+      // NB: `File` is shadowed by the lucide-react `File` icon import in this
+      // module, so reach the DOM File constructor via globalThis.
+      const file = new globalThis.File([buf], `${sel.repo}.zip`, { type: "application/zip" });
+      const files = await processZipFile(file);
+      if (files.size === 0) throw new Error("No analyzable files found in the repository.");
+      const result = await analyzeProject(files, "github");
+      handleIngestionComplete(result);
+      toast("Repository analyzed successfully.", "success");
+    } catch (e: any) {
+      toast(e?.message || "Failed to import repository.", "error");
     }
-    setStage('idle');
-    setStreamStep(0);
-    setActiveProjectId(null);
-  }, [activeProjectId, updateMutation, toast]);
-
-  const resetAll = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    setStage('idle');
-    setStreamStep(0);
-    setPrompt('');
-    setActiveProjectId(null);
-    setIngestionResult(null);
-    setClarificationQuestions([]);
-    setAnswers({});
-    setBackendSpec(null);
-    setBlueprint(null);
-    saveDraft('');
-  };
-
-  const handleHistorySelect = (historyPrompt: string) => {
-    setPrompt(historyPrompt);
-    setStage('composing');
-    setShowHistory(false);
-  };
-
-  // Reveal nodes progressively while streaming
-  const visibleIds = useMemo(() => {
-    if (stage === 'idle' || stage === 'composing') return ['web', 'edge'];
-    if (stage === 'done') return SF_ARCH.nodes.map(n => n.id);
-    // streaming
-    const order = ['web', 'edge', 'api', 'auth', 'exam', 'pg', 'redis', 'pay', 'queue', 's3'];
-    return order.slice(0, Math.min(order.length, Math.ceil(streamStep * 1.5)));
-  }, [stage, streamStep]);
-
-  const nodeById = Object.fromEntries(SF_ARCH.nodes.map(n => [n.id, n]));
-  const W = 1080, H = 320;
+  }, [toast, handleIngestionComplete]);
 
   // Render components based on tab
   const renderTabContent = () => {
@@ -792,12 +619,8 @@ export function WorkspacePage() {
             </div>
             <div className="sf-card" style={{ height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <div className="sf-col sf-center" style={{ gap: 12 }}>
-                  {stage === 'streaming' ? (
-                     <div className="sf-spin"><RefreshCw size={24} style={{ color: 'var(--sf-text-muted)' }} /></div>
-                  ) : (
-                     <Layers3 size={24} style={{ color: 'var(--sf-text-faint)' }} />
-                  )}
-                  <span className="sf-muted">Generating architecture...</span>
+                  <Layers3 size={24} style={{ color: 'var(--sf-text-faint)' }} />
+                  <span className="sf-muted">Architecture preview appears in the editor.</span>
                </div>
             </div>
             <div className="sf-h3" style={{ marginTop: 18, marginBottom: 10, margin: 0 }}>Stack</div>
@@ -852,9 +675,6 @@ export function WorkspacePage() {
         breadcrumbs={[activeWorkspace?.name || 'Workspace', 'New generation']}
         actions={
           <div className="sf-row" style={{ gap: 8 }}>
-            <button className="sf-btn sf-btn--sm" type="button">
-              <Github size={12} /> Connect repo
-            </button>
             <PanelToggleButton isOpen={isPanelOpen} onClick={() => setIsPanelOpen(!isPanelOpen)} />
           </div>
         }
@@ -873,303 +693,6 @@ export function WorkspacePage() {
             display: 'flex', justifyContent: 'center',
             minHeight: '100%',
           }}>
-            {stage === 'streaming' ? (
-              <div style={{ width: '100%', maxWidth: 760 }}>
-                <div className="sf-row" style={{ gap: 10, marginBottom: 18 }}>
-                  <span className="sf-chip" style={{ height: 24, padding: '0 10px', color: 'var(--sf-blue)', borderColor: 'oklch(0.4 0.12 250 / 0.4)' }}>
-                    <span className="sf-dot sf-dot--blue sf-pulse" /> Generating · {streamStep}/{reasoning.length}
-                  </span>
-                  <button onClick={stopGeneration} className="sf-btn sf-btn--sm sf-btn--ghost" type="button">
-                    <StopCircle size={11} /> Stop
-                  </button>
-                  <span className="sf-grow" />
-                  <span className="mono sf-faint" style={{ fontSize: 11 }}>est. 24s remaining</span>
-                </div>
-
-                <h2 className="sf-h1" style={{ marginBottom: 8, fontSize: 26, margin: 0 }}>
-                  Designing your backend
-                </h2>
-                <p className="sf-muted" style={{ marginBottom: 24, fontSize: 13.5, marginTop: 4 }}>
-                  Streaming the architecture — each step is reasoned and verified.
-                </p>
-
-                <div className="sf-card-elev" style={{ padding: 0, overflow: 'hidden' }}>
-                  {/* Quoted prompt header */}
-                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--sf-border)', background: 'var(--sf-bg-2)' }}>
-                    <div className="sf-row" style={{ gap: 8, marginBottom: 6 }}>
-                      <Sparkles size={11} />
-                      <span className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Prompt</span>
-                    </div>
-                    <div style={{ fontSize: 13.5, color: 'var(--sf-text-muted)', lineHeight: 1.5 }}>
-                      {prompt || heroPrompt}
-                    </div>
-                  </div>
-
-                  {/* Reasoning timeline */}
-                  <div className="sf-col" style={{ padding: '14px 18px' }}>
-                    {reasoning.map((r, i) => {
-                      const done = i < streamStep;
-                      const active = i === streamStep;
-                      const pending = i > streamStep;
-                      return (
-                        <div key={i} className="sf-row" style={{
-                          gap: 12, padding: '8px 0', alignItems: 'flex-start',
-                          opacity: pending ? 0.35 : 1,
-                          transition: 'opacity .3s',
-                        }}>
-                          <div style={{
-                            width: 18, height: 18, borderRadius: 999,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: done ? 'var(--sf-text)' : (active ? 'transparent' : 'var(--sf-surface-2)'),
-                            border: active ? '1.5px solid var(--sf-blue)' : 'none',
-                            marginTop: 1,
-                            flex: '0 0 auto',
-                          }}>
-                            {done && <Check size={10} />}
-                            {active && <span className="sf-dot sf-dot--blue sf-pulse" />}
-                          </div>
-                          <div className="sf-grow">
-                            <div style={{ fontSize: 13.5, color: 'var(--sf-text)' }}>
-                              {r.label}
-                              {active && <span className="sf-caret" />}
-                            </div>
-                            <div className="mono sf-faint" style={{ fontSize: 11, marginTop: 2 }}>
-                              {r.detail}
-                            </div>
-                          </div>
-                          {done && <span className="mono sf-faint" style={{ fontSize: 10.5 }}>
-                            {(r.dur / 1000).toFixed(1)}s
-                          </span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : stage === 'stack-selection' && architectureRequirements ? (
-              <div style={{ width: '100%', maxWidth: 760 }}>
-                <StackSelectionWizard
-                  requirements={architectureRequirements}
-                  onComplete={(preferences) => {
-                    setArchitecturePreferences(preferences);
-                    setArchitectureConfigured(true);
-                    
-                    // orchestration will be handled by startGeneration when called next
-                    // but since we want auto-advance, we can call it here
-                    setTimeout(() => startGeneration(), 50);
-                  }}
-                />
-              </div>
-            ) : stage === 'clarifying' ? (
-              <div style={{ width: '100%', maxWidth: 760 }}>
-                <GapResolutionWizard
-                  questions={gapResolutionQuestions}
-                  onComplete={(answers) => {
-                    setResolvedGapAnswers(answers);
-                    console.log('Gap Resolution Complete -> reviewing');
-                    setTimeout(() => startGeneration(), 50);
-                  }}
-                />
-              </div>
-            ) : stage === 'reviewing' && resolvedArchitecture ? (
-              <div style={{ width: '100%', maxWidth: 860 }}>
-                <ArchitectureReview
-                  resolvedArchitecture={resolvedArchitecture}
-                  onApprove={(spec) => {
-                    setBackendSpec(spec);
-                    const bprint = generateBackendBlueprint(spec, resolvedArchitecture);
-                    setBlueprint(bprint);
-                    console.log('Review Approved -> blueprinting');
-                    setStage('blueprinting');
-                  }}
-                  onEdit={() => {
-                    setStage('composing');
-                  }}
-                />
-              </div>
-            ) : stage === 'blueprinting' ? (
-              <div style={{ width: '100%', maxWidth: 860 }}>
-                <BlueprintReview
-                  blueprint={blueprint!}
-                  onApprove={(bprint) => {
-                    setBlueprint(bprint);
-                    console.log('Blueprint Approved -> generation');
-                    executeGeneration(false, answers, backendSpec!, bprint);
-                  }}
-                  onEdit={() => {
-                    setStage('reviewing');
-                  }}
-                />
-              </div>
-            ) : stage === 'failed' ? (
-              <div style={{ width: '100%', maxWidth: 760 }}>
-                <div className="sf-row" style={{ gap: 10, marginBottom: 18 }}>
-                  <span className="sf-chip" style={{ height: 24, padding: '0 10px', color: 'var(--sf-red)', borderColor: 'rgba(255,90,90,0.15)' }}>
-                    <span className="sf-dot sf-dot--red" /> Generation failed
-                  </span>
-                  <button onClick={resetAll} className="sf-btn sf-btn--sm sf-btn--ghost" type="button">
-                    <RefreshCw size={11} /> Reset
-                  </button>
-                  <span className="sf-grow" />
-                </div>
-
-                <h2 className="sf-h1" style={{ marginBottom: 8, fontSize: 26, margin: 0, color: 'var(--sf-text)' }}>
-                  {failureDetails?.isConflict ? "Authentication System Conflict" : failureDetails?.isKeyMissing ? "OpenAI API Key Required" : "Generation Failure"}
-                </h2>
-                <p className="sf-muted" style={{ marginBottom: 24, fontSize: 13.5, marginTop: 4 }}>
-                  {failureDetails?.isConflict 
-                    ? "Simplicit identified architectural incompatibilities in your prompt. Learn more about the conflicts below."
-                    : failureDetails?.isKeyMissing 
-                    ? "To use the full AI architect features, configure an OpenAI API key. Or run in fallback local mode immediately."
-                    : "An error occurred while compiling code files and preparing database schemas."
-                  }
-                </p>
-
-                {failureDetails?.isConflict && (
-                  <div className="sf-card-elev" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(255,180,80,0.2)', background: 'var(--sf-surface-2)' }}>
-                    <div className="sf-row" style={{ gap: 8, marginBottom: 10 }}>
-                      <AlertTriangle size={13} style={{ color: 'var(--sf-amber)' }} />
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--sf-amber)', fontWeight: 600 }}>RECONCILIATION CONFLICT DETECTED</span>
-                    </div>
-                    <div style={{ fontSize: 13.5, color: 'var(--sf-text)', lineHeight: 1.5, marginBottom: 12 }}>
-                      You requested both <strong>Supabase Auth</strong> and <strong>Lucia Auth</strong>.
-                      These two authentication frameworks serve identical purposes but require distinct database adapters, session managers, and middleware patterns. Running both leads to duplicate auth tables and middleware collisions.
-                    </div>
-                    <div className="sf-col" style={{ gap: 6 }}>
-                      <div className="sf-card" style={{ padding: 10, background: 'var(--sf-bg)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <span className="sf-dot sf-dot--green" />
-                        <span style={{ fontSize: 12, color: 'var(--sf-text-muted)' }}>
-                          <strong>Resolution A:</strong> Edit prompt to use only one (e.g. &quot;Use Supabase Auth&quot;).
-                        </span>
-                      </div>
-                      <div className="sf-card" style={{ padding: 10, background: 'var(--sf-bg)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <span className="sf-dot sf-dot--green" />
-                        <span style={{ fontSize: 12, color: 'var(--sf-text-muted)' }}>
-                          <strong>Resolution B:</strong> Select a standard template from the dashboard presets.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {failureDetails?.isKeyMissing && (
-                  <div className="sf-card-elev" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--sf-surface-2)' }}>
-                    <div className="sf-row" style={{ gap: 8, marginBottom: 10 }}>
-                      <Key size={13} style={{ color: 'var(--sf-blue)' }} />
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--sf-blue)', fontWeight: 600 }}>KEY MISSING</span>
-                    </div>
-                    <div style={{ fontSize: 13.5, color: 'var(--sf-text)', lineHeight: 1.5, marginBottom: 12 }}>
-                      No <code>OPENAI_API_KEY</code> detected in your environment. You can add it to your <code>.env.local</code> file, or you can bypass it and use the local code generator.
-                    </div>
-                    <div className="sf-row" style={{ gap: 8 }}>
-                      <button 
-                        onClick={() => {
-                          if (failureDetails) {
-                            startGeneration(true);
-                          }
-                        }} 
-                        className="sf-btn sf-btn--primary sf-btn--sm"
-                        type="button"
-                      >
-                        <Zap size={11} style={{ marginRight: 6 }} /> Run in local mode (Offline fallback)
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {!failureDetails?.isConflict && !failureDetails?.isKeyMissing && (
-                  <div className="sf-card-elev" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(255,90,90,0.15)', background: 'var(--sf-surface-2)' }}>
-                    <div className="sf-row" style={{ gap: 8, marginBottom: 10 }}>
-                      <AlertTriangle size={13} style={{ color: 'var(--sf-red)' }} />
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--sf-red)', fontWeight: 600 }}>PIPELINE ERROR LOG</span>
-                    </div>
-                    <pre style={{
-                      margin: 0, padding: 12, background: 'var(--sf-bg)', borderRadius: 6,
-                      fontSize: 12, color: 'var(--sf-text-muted)', border: '1px solid var(--sf-border)',
-                      fontFamily: 'var(--sf-font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-all'
-                    }}>
-                      {failureDetails?.message}
-                    </pre>
-                  </div>
-                )}
-
-                {/* General Recovery Actions */}
-                <div className="sf-row" style={{ gap: 8 }}>
-                  <button 
-                    onClick={() => {
-                      if (failureDetails) {
-                        setPrompt(failureDetails.prompt);
-                        setStage('composing');
-                      }
-                    }} 
-                    className="sf-btn"
-                    type="button"
-                  >
-                    <Edit size={11} style={{ marginRight: 6 }} /> Edit prompt
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (failureDetails) {
-                        startGeneration();
-                      }
-                    }} 
-                    className="sf-btn sf-btn--primary"
-                    type="button"
-                  >
-                    <RefreshCw size={11} style={{ marginRight: 6 }} /> Retry generation
-                  </button>
-                  <button 
-                    onClick={() => {
-                      toast(failureDetails?.message || "Unknown pipeline error occurred.", "error");
-                    }} 
-                    className="sf-btn sf-btn--ghost"
-                    type="button"
-                  >
-                    <Eye size={11} style={{ marginRight: 6 }} /> View log details
-                  </button>
-                </div>
-              </div>
-            ) : stage === 'done' ? (
-              <div style={{ width: '100%', maxWidth: 760 }}>
-                <div className="sf-row" style={{ gap: 10, marginBottom: 18 }}>
-                  <span className="sf-chip" style={{ height: 24, padding: '0 10px', color: 'var(--sf-green)', borderColor: 'oklch(0.4 0.10 145 / 0.3)' }}>
-                    <span className="sf-dot sf-dot--green" /> Generation complete · 6.4s
-                  </span>
-                  <button onClick={resetAll} className="sf-btn sf-btn--sm sf-btn--ghost" type="button">
-                    <RefreshCw size={11} /> New
-                  </button>
-                  <span className="sf-grow" />
-                  <button onClick={() => { if (activeProjectId) router.push(`/generations/${activeProjectId}`); }} className="sf-btn sf-btn--sm" type="button">
-                    <Eye size={11} /> Open architecture
-                  </button>
-                  <button onClick={() => { if (activeProjectId) router.push(`/generations/${activeProjectId}`); }} className="sf-btn sf-btn--primary sf-btn--sm" type="button">
-                    <Download size={11} /> Export project
-                  </button>
-                </div>
-
-                <h2 className="sf-h1" style={{ marginBottom: 8, fontSize: 26, margin: 0 }}>
-                  Generation complete
-                </h2>
-                <p className="sf-muted" style={{ marginBottom: 24, fontSize: 13.5, marginTop: 4 }}>
-                  Your project has been successfully initialized. Redirecting to workspace...
-                </p>
-
-                {/* Summary stat row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 22 }}>
-                  {[
-                    { l: 'Status', v: 'Ready' },
-                    { l: 'Stack',  v: stack },
-                    { l: 'Routes', v: 'Generated' },
-                    { l: 'Schema', v: 'Generated' },
-                  ].map(s => (
-                    <div key={s.l} className="sf-card" style={{ padding: '14px 14px 12px' }}>
-                      <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.l}</div>
-                      <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 6, color: 'var(--sf-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
               <div style={{ width: '100%', maxWidth: 760 }}>
                 <h1 className="sf-h1" style={{ textAlign: 'center', marginBottom: 10, fontSize: 32, margin: 0, color: 'var(--sf-text)' }}>
                   What are you shipping?
@@ -1181,19 +704,7 @@ export function WorkspacePage() {
                 {/* Ingestion panel */}
                 {showIngestionPanel && !ingestionResult && (
                   <IngestionPanel
-                    onComplete={(result) => {
-                      setIngestionResult(result);
-                      setClarificationQuestions(result.clarificationQuestions ?? []);
-                      setShowIngestionPanel(false);
-                      // Auto-populate prompt hint from ingested project
-                      if (result.metadata.name && !prompt) {
-                        const hint = `Build a production-ready backend for ${result.metadata.name}` +
-                          (result.metadata.description ? ` — ${result.metadata.description}` : '') +
-                          (result.framework.name !== 'Unknown' ? `. Frontend uses ${result.framework.name}.` : '.');
-                        setPrompt(hint);
-                        setStage('composing');
-                      }
-                    }}
+                    onComplete={handleIngestionComplete}
                     onClose={() => setShowIngestionPanel(false)}
                     onFocusPrompt={() => promptRef.current?.focus()}
                   />
@@ -1208,46 +719,7 @@ export function WorkspacePage() {
                   />
                 )}
 
-                {/* Ingestion clarification questions (improve accuracy before architecture) */}
-                {ingestionResult && clarificationQuestions.length > 0 && (
-                  <div className="sf-col" style={{ gap: 10, marginBottom: 16 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--sf-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      A few questions to improve accuracy
-                    </span>
-                    {clarificationQuestions.map((q, idx) => {
-                      const selected = clarificationAnswers[q.id];
-                      return (
-                        <div key={q.id ?? idx} className="sf-card" style={{ padding: '12px 14px', background: 'var(--sf-bg)' }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--sf-text)', marginBottom: q.options?.length ? 10 : 0 }}>{q.text}</div>
-                          {q.options && q.options.length > 0 && (
-                            <div className="sf-row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                              {q.options.map((opt) => {
-                                const isSel = selected === opt.value;
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => setClarificationAnswers(prev => ({ ...prev, [q.id]: opt.value }))}
-                                    className="sf-chip"
-                                    type="button"
-                                    style={{
-                                      height: 26,
-                                      cursor: 'pointer',
-                                      color: isSel ? 'var(--sf-text)' : 'var(--sf-text-muted)',
-                                      borderColor: isSel ? 'var(--sf-blue)' : 'var(--sf-border)',
-                                      background: isSel ? 'var(--sf-surface-2)' : 'transparent',
-                                    }}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Clarification questions are answered in the editor wizard now. */}
 
                 {/* Big prompt card */}
                 <div className="sf-card-elev" style={{
@@ -1286,16 +758,31 @@ export function WorkspacePage() {
                     >
                       <Plus size={12} /> {ingestionResult ? 'Attached' : 'Attach'}
                     </button>
+                    <button
+                      className="sf-btn sf-btn--sm sf-btn--ghost"
+                      style={{ padding: '0 8px' }}
+                      type="button"
+                      onClick={() => setShowRepoSelector(true)}
+                      title={githubConnected && githubUsername ? `Connected as @${githubUsername}` : undefined}
+                    >
+                      {githubConnected && <span className="sf-dot sf-dot--green" style={{ marginRight: 2 }} />}
+                      <Github size={12} /> {githubConnected ? 'Import from GitHub' : 'Connect repo'}
+                    </button>
+                    {githubConnected && githubUsername && (
+                      <span className="mono" style={{ fontSize: 10.5, color: 'var(--sf-text-faint)' }}>
+                        @{githubUsername}
+                      </span>
+                    )}
                     <span className="sf-grow" />
 
                     <span className="mono" style={{ fontSize: 10.5, marginRight: 8, color: prompt.length > 1800 ? 'var(--sf-red)' : 'var(--sf-text-faint)' }}>
                       {prompt.length}/2000 · ⌘↵ to run
                     </span>
                     <button
-                      disabled={(stage as any) === 'streaming'}
+                      disabled={!prompt.trim()}
                       onClick={startGeneration}
                       className="sf-btn sf-btn--primary sf-btn--sm"
-                      style={{ paddingRight: 10, opacity: (stage as any) === 'streaming' ? 0.6 : 1 }}
+                      style={{ paddingRight: 10, opacity: !prompt.trim() ? 0.6 : 1 }}
                       type="button"
                     >
                       <Sparkles size={12} style={{ marginRight: 6 }} /> Generate
@@ -1351,7 +838,6 @@ export function WorkspacePage() {
                 )}
 
               </div>
-            )}
           </div>
         </main>
 
@@ -1397,7 +883,7 @@ export function WorkspacePage() {
           <div className="sf-row" style={{ padding: '8px 14px', borderTop: '1px solid var(--sf-border)', gap: 10, background: 'var(--sf-bg)' }}>
             <span className="sf-dot sf-dot--green" />
             <span className="mono sf-faint" style={{ fontSize: 10.5 }}>
-              {stage === 'done' ? 'verified · 0 errors' : stage === 'streaming' ? 'streaming' : 'idle'}
+              idle
             </span>
             <span className="sf-grow" />
             <span className="mono sf-faint" style={{ fontSize: 10.5 }}>v2.4 · {stack}</span>
@@ -1406,6 +892,33 @@ export function WorkspacePage() {
       </div>
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+
+      {showRepoSelector && (
+        <div
+          onClick={() => setShowRepoSelector(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sf-card-elev"
+            style={{
+              width: "min(520px, 92vw)", maxHeight: "80vh", overflow: "hidden",
+              padding: 16, background: "var(--sf-surface-2)",
+              border: "1px solid var(--sf-border-strong)", borderRadius: 12,
+            }}
+          >
+            <GitHubRepoSelector
+              onRepoSelected={handleRepoSelected}
+              onClose={() => setShowRepoSelector(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

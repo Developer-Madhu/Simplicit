@@ -23,13 +23,6 @@ export { generateClarificationQuestions } from "./analyzers/question-generator";
 export { processZipFile } from "./providers/zip-provider";
 export type { ZipProcessProgress } from "./providers/zip-provider";
 
-export {
-  parseGitHubUrl,
-  validateRepoAccess,
-  fetchGitHubRepo,
-} from "./providers/github-provider";
-export type { GitHubProgress } from "./providers/github-provider";
-
 // ─── Components ─────────────────────────────────────────────────────
 export { IngestionPanel } from "./components/ingestion-panel";
 export { AnalysisSummary } from "./components/analysis-summary";

@@ -50,11 +50,12 @@ export class ArchitectureSynthesisEngine {
       })),
       entities: graph.entities.map(e => ({
         name: e.name,
-        table: e.table,
+        tableName: e.table,
         description: e.description,
         fields: e.fields.map(f => ({ name: f.name, type: f.type, isPrimary: f.isPrimary })),
         relationships: e.relationships,
         indexes: e.indexes,
+        constraints: e.constraints,
         evidence: e.evidence // Phase 11: Explainability
       })),
       database: {

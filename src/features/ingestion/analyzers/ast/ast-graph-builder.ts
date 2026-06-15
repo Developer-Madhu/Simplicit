@@ -298,18 +298,31 @@ function resolveImportPath(
   importPath: string,
   files: Map<string, string>
 ): string | null {
-  if (importPath.startsWith("@/") || importPath.startsWith("~/")) {
-    // Alias: try resolving from src/
-    const candidate = importPath.replace(/^@\//, "src/").replace(/^~\//, "src/");
-    const resolved = tryExtensions(candidate, files);
-    if (resolved) return resolved;
+  // TypeScript path aliases (@/, ~/, #/). Projects map these to EITHER the
+  // project root (e.g. "@/*" -> "./*", as in next-saas-stripe-starter) or to
+  // src/ (e.g. "@/*" -> "./src/*"). Try both so edges resolve regardless of the
+  // alias convention — the previous code assumed src/ only and dropped every
+  // root-aliased import.
+  if (/^[@~#]\//.test(importPath)) {
+    const stripped = importPath.replace(/^[@~#]\//, "");
+    return tryExtensions(stripped, files) ?? tryExtensions("src/" + stripped, files);
   }
 
   if (!importPath.startsWith(".")) return null; // external package
 
-  const dir = fromFile.split("/").slice(0, -1).join("/");
-  const candidate = dir ? `${dir}/${importPath}` : importPath;
-  return tryExtensions(candidate.replace(/\/\.\//g, "/"), files);
+  // Relative import — resolve against the source file's directory, collapsing
+  // both ./ and ../ segments. The previous code only collapsed "/./", so any
+  // "../" import resolved to a literal path that never matched a file key.
+  const sourceDir = fromFile.includes("/")
+    ? fromFile.slice(0, fromFile.lastIndexOf("/"))
+    : "";
+  const joined = (sourceDir ? sourceDir + "/" : "") + importPath;
+  const resolved: string[] = [];
+  for (const part of joined.split("/")) {
+    if (part === "..") resolved.pop();
+    else if (part !== "." && part !== "") resolved.push(part);
+  }
+  return tryExtensions(resolved.join("/"), files);
 }
 
 function tryExtensions(base: string, files: Map<string, string>): string | null {

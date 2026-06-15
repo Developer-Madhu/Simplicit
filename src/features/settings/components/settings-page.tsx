@@ -132,6 +132,20 @@ export function SettingsPage() {
   const [section, setSection] = useState("api-keys");
   const displayName = useDisplayName();
 
+  // Railway deploy-token settings, wired to /api/deploy/settings.
+  const [railwayToken, setRailwayToken] = useState("");
+  const [railwayConfigured, setRailwayConfigured] = useState(false);
+  const [railwaySaving, setRailwaySaving] = useState(false);
+  const [railwayError, setRailwayError] = useState<string | null>(null);
+  const [railwaySuccess, setRailwaySuccess] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/deploy/settings")
+      .then((r) => r.json())
+      .then((data) => setRailwayConfigured(data.railway ?? false))
+      .catch(() => {}); // silent fail — UI shows unconfigured
+  }, []);
+
   return (
     <div className="sf-app" style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "var(--sf-bg)" }}>
       <AppTopbar breadcrumbs={[displayName, "Settings"]} />
@@ -203,7 +217,91 @@ export function SettingsPage() {
               <IntegrationDetail name="Supabase" status="disconnected" desc="Use Supabase as your Postgres + Auth provider." />
             )}
             {section === "railway" && (
-              <IntegrationDetail name="Railway" status="connected" desc="One-click deploy to Railway with provisioned services." />
+              <div className="railway-settings">
+                <h2
+                  style={{
+                    fontFamily: "var(--sf-font-sans)",
+                    fontSize: 22,
+                    fontWeight: 500,
+                    letterSpacing: "-0.02em",
+                    margin: 0,
+                    color: "var(--sf-text)",
+                  }}
+                >
+                  Railway Deployment
+                </h2>
+                <p
+                  style={{
+                    fontFamily: "var(--sf-font-sans)",
+                    fontSize: 13.5,
+                    color: "var(--sf-text-muted)",
+                    opacity: 0.9,
+                    margin: "6px 0 0",
+                  }}
+                >
+                  {railwayConfigured
+                    ? "Railway token is configured. Paste a new token to replace it."
+                    : "Paste your Railway API token to enable one-click deployment."}
+                </p>
+                <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                  <input
+                    className="sf-input"
+                    type="password"
+                    placeholder="Railway API token"
+                    value={railwayToken}
+                    onChange={(e) => {
+                      setRailwayToken(e.target.value);
+                      setRailwayError(null);
+                      setRailwaySuccess(false);
+                    }}
+                    style={{ fontFamily: "var(--sf-font-mono)", flex: 1, height: 36 }}
+                  />
+                  <button
+                    className="sf-btn sf-btn--primary sf-btn--sm"
+                    disabled={!railwayToken.trim() || railwaySaving}
+                    onClick={async () => {
+                      setRailwaySaving(true);
+                      setRailwayError(null);
+                      try {
+                        const res = await fetch("/api/deploy/settings", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            provider: "railway",
+                            api_token: railwayToken.trim(),
+                          }),
+                        });
+                        if (!res.ok) {
+                          const d = await res.json();
+                          setRailwayError(d.error ?? "Save failed");
+                        } else {
+                          setRailwayConfigured(true);
+                          setRailwayToken("");
+                          setRailwaySuccess(true);
+                          setTimeout(() => setRailwaySuccess(false), 3000);
+                        }
+                      } catch {
+                        setRailwayError("Network error — try again");
+                      } finally {
+                        setRailwaySaving(false);
+                      }
+                    }}
+                    type="button"
+                  >
+                    {railwaySaving ? "Saving…" : "Save Token"}
+                  </button>
+                </div>
+                {railwayError && (
+                  <p style={{ color: "var(--sf-error, red)", marginTop: "8px", fontFamily: "var(--sf-font-sans)" }}>
+                    {railwayError}
+                  </p>
+                )}
+                {railwaySuccess && (
+                  <p style={{ color: "var(--sf-success, green)", marginTop: "8px", fontFamily: "var(--sf-font-sans)" }}>
+                    Token saved. Railway deployment is now enabled.
+                  </p>
+                )}
+              </div>
             )}
             {section === "billing" && <BillingSection />}
             {section === "export" && <ExportSection />}
@@ -274,94 +372,20 @@ function FieldRow({ label, hint, children }: FieldRowProps) {
 }
 
 function APIKeysSection() {
-  const keys = [
-    {
-      name: "production",
-      token: "sf_live_••••••••••••2f3a",
-      created: "May 04 2026",
-      lastUsed: "12 min ago",
-      scope: "all"
-    },
-    {
-      name: "ci",
-      token: "sf_live_••••••••••••71b8",
-      created: "Apr 22 2026",
-      lastUsed: "2 h ago",
-      scope: "generate, deploy"
-    },
-    {
-      name: "local-dev",
-      token: "sf_dev_•••••••••••••c4e0",
-      created: "Apr 02 2026",
-      lastUsed: "yesterday",
-      scope: "generate"
-    }
-  ];
   return (
     <>
       <SectionHead
         title="API keys"
         subtitle="Use these to call Simplicit from your own scripts and CI."
         actions={
-          <button className="sf-btn sf-btn--primary sf-btn--sm" type="button">
+          <button className="sf-btn sf-btn--primary sf-btn--sm" type="button" disabled title="Coming soon">
             <Icons.Plus size={11} style={{ marginRight: 4 }} /> New key
           </button>
         }
       />
-      <div className="sf-card" style={{ padding: 0, overflow: "hidden" }}>
-        <div
-          className="sf-row"
-          style={{
-            padding: "10px 16px",
-            borderBottom: "1px solid var(--sf-border)",
-            background: "var(--sf-bg-2)",
-            fontSize: 11,
-            color: "var(--sf-text-faint)",
-            letterSpacing: "0.04em",
-            textTransform: "uppercase"
-          }}
-        >
-          <span style={{ flex: "0 0 130px" }}>Name</span>
-          <span style={{ flex: "0 0 220px" }}>Token</span>
-          <span style={{ flex: "0 0 160px" }}>Scope</span>
-          <span style={{ flex: "0 0 120px" }}>Created</span>
-          <span className="sf-grow">Last used</span>
-        </div>
-        {keys.map((k, i) => (
-          <div
-            key={k.name}
-            className="sf-row"
-            style={{
-              padding: "12px 16px",
-              borderBottom: i < keys.length - 1 ? "1px solid var(--sf-border)" : "none",
-              gap: 8,
-              fontSize: 13,
-              alignItems: "center"
-            }}
-          >
-            <span className="sf-row" style={{ flex: "0 0 130px", gap: 6, alignItems: "center" }}>
-              <Icons.Key size={11} style={{ color: "var(--sf-text-faint)" }} />
-              <span>{k.name}</span>
-            </span>
-            <span className="mono" style={{ flex: "0 0 220px", fontSize: 11.5, color: "var(--sf-text-muted)" }}>
-              {k.token}
-            </span>
-            <span style={{ flex: "0 0 160px", fontSize: 12, color: "var(--sf-text-muted)" }}>{k.scope}</span>
-            <span style={{ flex: "0 0 120px", fontSize: 12 }} className="sf-muted">
-              {k.created}
-            </span>
-            <span className="sf-grow sf-faint" style={{ fontSize: 12, color: "var(--sf-text-faint)" }}>
-              {k.lastUsed}
-            </span>
-            <button className="sf-btn sf-btn--ghost sf-btn--sm" style={{ padding: "0 5px" }} type="button">
-              <Icons.Copy size={11} />
-            </button>
-            <button className="sf-btn sf-btn--ghost sf-btn--sm" style={{ padding: "0 5px" }} type="button">
-              <Icons.More size={13} />
-            </button>
-          </div>
-        ))}
-      </div>
+      <p style={{ opacity: 0.5, fontSize: "13px", fontFamily: "var(--sf-font-sans)" }}>
+        API key management coming soon.
+      </p>
 
       <h3 style={{ fontSize: 15, fontWeight: 500, marginTop: 36, marginBottom: 12, color: "var(--sf-text)" }}>Webhooks</h3>
       <div className="sf-card" style={{ padding: 18 }}>
@@ -386,95 +410,169 @@ function APIKeysSection() {
 }
 
 function AISection() {
+  const [mode, setMode] = useState<"simplicit" | "byok">("simplicit");
+  const [anthropicConfigured, setAnthropicConfigured] = useState(false);
+  const [nvidiaConfigured, setNvidiaConfigured] = useState(false);
+
+  // Booleans only — the GET endpoint never returns the key values.
+  useEffect(() => {
+    fetch("/api/ai/keys")
+      .then((r) => r.json())
+      .then((data) => {
+        setAnthropicConfigured(data.anthropic ?? false);
+        setNvidiaConfigured(data.nvidia ?? false);
+        if (data.anthropic || data.nvidia) setMode("byok"); // already BYOK → show it
+      })
+      .catch(() => {}); // silent — UI shows unconfigured
+  }, []);
+
   return (
     <>
-      <SectionHead
-        title="AI provider"
-        subtitle="Choose which model powers generation. Bring your own key for higher rate limits."
-      />
+      <SectionHead title="AI provider" subtitle="Use Simplicit's managed models, or bring your own API keys." />
 
-      <FieldRow label="Architect model" hint="Used for system design, schema, and code planning.">
-        <div className="sf-card" style={{ padding: 12 }}>
-          <div className="sf-row" style={{ gap: 12, alignItems: "center" }}>
-            <Icons.Sparkle size={14} style={{ color: "var(--sf-text)" }} />
-            <div className="sf-grow">
-              <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--sf-text)" }}>Simplicit Architect 2.4</div>
-              <div className="sf-faint" style={{ fontSize: 11.5, color: "var(--sf-text-faint)" }}>
-                Default · multi-pass reasoning, schema-aware
-              </div>
-            </div>
-            <span className="sf-chip" style={{ marginRight: 8 }}>Recommended</span>
-            <button className="sf-btn sf-btn--sm" type="button">Change</button>
-          </div>
-        </div>
-      </FieldRow>
-
-      <FieldRow label="Code model" hint="Used to author individual files once the plan is approved.">
-        <div className="sf-card" style={{ padding: 12 }}>
-          <div className="sf-row" style={{ gap: 12, alignItems: "center" }}>
-            <Icons.Code size={14} style={{ color: "var(--sf-text)" }} />
-            <div className="sf-grow">
-              <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--sf-text)" }}>Auto (best available)</div>
-              <div className="sf-faint" style={{ fontSize: 11.5, color: "var(--sf-text-faint)" }}>
-                Selects based on file kind and length
-              </div>
-            </div>
-            <button className="sf-btn sf-btn--sm" type="button">Configure</button>
-          </div>
-        </div>
-      </FieldRow>
-
-      <FieldRow
-        label="Bring your own keys"
-        hint="Routes your generations through your own API account. We never store responses."
-      >
-        <div className="sf-col" style={{ gap: 10 }}>
-          {[
-            { name: "Anthropic", val: "sk-ant-•••••••", dot: "green" },
-            { name: "OpenAI", val: "sk-•••••••", dot: "green" },
-            { name: "Google", val: "— not set —", dot: "gray" }
-          ].map((p) => (
-            <div key={p.name} className="sf-card" style={{ padding: 12 }}>
-              <div className="sf-row" style={{ gap: 12, alignItems: "center" }}>
-                <span className={`sf-dot sf-dot--${p.dot}`} />
-                <div className="sf-grow">
-                  <div style={{ fontSize: 13, color: "var(--sf-text)" }}>{p.name}</div>
-                  <div className="mono sf-faint" style={{ fontSize: 11, color: "var(--sf-text-faint)" }}>
-                    {p.val}
-                  </div>
-                </div>
-                <button className="sf-btn sf-btn--ghost sf-btn--sm" type="button">
-                  {p.dot === "gray" ? "Connect" : "Manage"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </FieldRow>
-
-      <FieldRow label="Privacy" hint="What we do with your prompts and code.">
-        <div className="sf-card" style={{ padding: 16 }}>
-          {[
-            { l: "Train on your prompts", v: "never", dot: "green" },
-            { l: "Retain code outputs", v: "30 days", dot: "gray" },
-            { l: "Share with subprocessors", v: "never", dot: "green" }
-          ].map((r) => (
-            <div
-              key={r.l}
-              className="sf-row"
-              style={{ padding: "8px 0", borderBottom: "1px dashed var(--sf-border)", alignItems: "center" }}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {(
+          [
+            { id: "simplicit", label: "Use Simplicit models" },
+            { id: "byok", label: "Use my own keys" },
+          ] as const
+        ).map((opt) => {
+          const active = mode === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setMode(opt.id)}
+              className="sf-btn sf-btn--sm"
+              style={{
+                background: active ? "var(--sf-surface-2)" : "transparent",
+                borderColor: active ? "var(--sf-border-strong)" : "var(--sf-border)",
+                color: active ? "var(--sf-text)" : "var(--sf-text-muted)",
+              }}
             >
-              <span style={{ fontSize: 12.5, color: "var(--sf-text)" }}>{r.l}</span>
-              <span className="sf-grow" />
-              <span className={`sf-dot sf-dot--${r.dot}`} />
-              <span className="mono sf-muted" style={{ fontSize: 11.5, marginLeft: 6, color: "var(--sf-text-muted)" }}>
-                {r.v}
-              </span>
-            </div>
-          ))}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {mode === "simplicit" ? (
+        <p style={{ fontSize: 13, color: "var(--sf-text-muted)", fontFamily: "var(--sf-font-sans)" }}>
+          Generations run on Simplicit&apos;s managed models. No setup required.
+        </p>
+      ) : (
+        <div className="sf-col" style={{ gap: 14 }}>
+          <AIKeyRow
+            provider="anthropic"
+            label="Anthropic"
+            placeholder="sk-ant-..."
+            configured={anthropicConfigured}
+            onSaved={() => setAnthropicConfigured(true)}
+          />
+          <AIKeyRow
+            provider="nvidia"
+            label="NVIDIA"
+            placeholder="nvapi-..."
+            configured={nvidiaConfigured}
+            onSaved={() => setNvidiaConfigured(true)}
+          />
+          <p style={{ fontSize: 11.5, color: "var(--sf-text-faint)", fontFamily: "var(--sf-font-sans)", marginTop: 4 }}>
+            Keys are stored securely and never shown again after saving. (Saved now; using them for generation ships
+            in a later update.)
+          </p>
         </div>
-      </FieldRow>
+      )}
     </>
+  );
+}
+
+function AIKeyRow({
+  provider,
+  label,
+  placeholder,
+  configured,
+  onSaved,
+}: {
+  provider: "anthropic" | "nvidia";
+  label: string;
+  placeholder: string;
+  configured: boolean;
+  onSaved: () => void;
+}) {
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, api_key: value.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Save failed");
+      } else {
+        setValue(""); // never keep the key in component state after save
+        setSuccess(true);
+        onSaved();
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch {
+      setError("Network error — try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="sf-card" style={{ padding: 12 }}>
+      <div className="sf-row" style={{ gap: 10, alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--sf-text)" }}>{label}</span>
+        <span className="sf-grow" />
+        {configured && (
+          <span className="sf-chip" style={{ color: "var(--sf-green)" }}>
+            <span className="sf-dot sf-dot--green" style={{ marginRight: 6 }} /> Configured
+          </span>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          className="sf-input"
+          type="password"
+          placeholder={configured ? "Paste a new key to replace" : placeholder}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(null);
+            setSuccess(false);
+          }}
+          style={{ fontFamily: "var(--sf-font-mono)", flex: 1, height: 34 }}
+        />
+        <button
+          className="sf-btn sf-btn--primary sf-btn--sm"
+          disabled={!value.trim() || saving}
+          onClick={save}
+          type="button"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {error && (
+        <p style={{ color: "var(--sf-error, red)", marginTop: 6, fontSize: 12, fontFamily: "var(--sf-font-sans)" }}>
+          {error}
+        </p>
+      )}
+      {success && (
+        <p style={{ color: "var(--sf-success, green)", marginTop: 6, fontSize: 12, fontFamily: "var(--sf-font-sans)" }}>
+          {label} key saved.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -775,64 +873,15 @@ function NotifySection() {
 }
 
 function MembersSection() {
-  const members = [
-    { n: "Alex Chen", e: "alex@acmestudio.com", r: "Owner" },
-    { n: "Priya Okafor", e: "priya@acmestudio.com", r: "Admin" },
-    { n: "Sam Vargas", e: "sam@acmestudio.com", r: "Member" }
-  ];
   return (
     <>
       <SectionHead
         title="Members"
-        subtitle="3 of 5 seats used."
-        actions={<button className="sf-btn sf-btn--primary sf-btn--sm" type="button">Invite member</button>}
+        actions={<button className="sf-btn sf-btn--primary sf-btn--sm" type="button" disabled title="Coming soon">Invite member</button>}
       />
-      <div className="sf-card" style={{ padding: 0, overflow: "hidden" }}>
-        {members.map((m, i) => (
-          <div
-            key={m.e}
-            className="sf-row"
-            style={{
-              padding: "14px 18px",
-              borderBottom: i < members.length - 1 ? "1px solid var(--sf-border)" : "none",
-              gap: 12,
-              alignItems: "center"
-            }}
-          >
-            <div
-              className="sf-avatar"
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 999,
-                border: "1px solid var(--sf-border)",
-                background: "var(--sf-elevated)",
-                fontSize: 10.5,
-                fontWeight: 600,
-                color: "var(--sf-text-muted)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              {m.n
-                .split(" ")
-                .map((s) => s[0])
-                .join("")}
-            </div>
-            <div className="sf-grow">
-              <div style={{ fontSize: 13, color: "var(--sf-text)" }}>{m.n}</div>
-              <div className="sf-faint" style={{ fontSize: 11.5, color: "var(--sf-text-faint)" }}>
-                {m.e}
-              </div>
-            </div>
-            <span className="sf-chip">{m.r}</span>
-            <button className="sf-btn sf-btn--ghost sf-btn--sm" style={{ padding: "0 5px" }} type="button">
-              <Icons.More size={13} />
-            </button>
-          </div>
-        ))}
-      </div>
+      <p style={{ opacity: 0.5, fontSize: "13px", fontFamily: "var(--sf-font-sans)" }}>
+        Team management coming soon.
+      </p>
     </>
   );
 }

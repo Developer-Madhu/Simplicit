@@ -39,7 +39,7 @@ export class ServiceGenerator {
         name: serviceName,
         module: moduleName,
         description: `Service for managing ${entity.name} domain objects.`,
-        methods: methods.map(m => m.name) // Compatible with BlueprintService
+        methods // rich ServiceMethodDefinition[] per the ServiceDefinition contract
       });
     });
 

@@ -264,9 +264,9 @@ export function LandingPage() {
           <span className="sf-grow" />
           <nav className="sf-row" style={{ gap: 22 }}>
             <a style={navLinkStyle} href="#">Product</a>
-            <a style={navLinkStyle} href="#">Templates</a>
-            <a style={navLinkStyle} href="#">Stack</a>
-            <a style={navLinkStyle} href="#">Docs</a>
+            <Link style={navLinkStyle} href="/terms">Terms</Link>
+            <a style={navLinkStyle} href="#stack">Stack</a>
+            <Link style={navLinkStyle} href="/docs">Docs</Link>
             <a style={navLinkStyle} href="#">Pricing</a>
             <a style={navLinkStyle} href="#">Changelog</a>
           </nav>
@@ -556,7 +556,7 @@ export function LandingPage() {
       />
 
       {/* ============ STACK ============ */}
-      <section style={{ padding: '100px 24px 60px', borderTop: '1px solid var(--sf-border)' }}>
+      <section id="stack" style={{ padding: '100px 24px 60px', borderTop: '1px solid var(--sf-border)', scrollMarginTop: 72 }}>
         <div style={{ maxWidth: 1240, margin: '0 auto', textAlign: 'center' }}>
           <SectionEyebrow label="04 — Stack" centered />
           <SectionTitle centered title="Pick your stack. Or let us pick." subtitle="Simplicit supports the frameworks engineers actually ship with. No vendor lock-in." />
@@ -612,35 +612,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ============ TESTIMONIALS ============ */}
-      <section style={{ padding: '90px 24px', borderTop: '1px solid var(--sf-border)', background: 'var(--sf-bg-2)' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <SectionEyebrow label="06 — Engineers" />
-          <SectionTitle title="Built for engineers who hate scaffolding." subtitle="" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 36 }}>
-            {[
-              { q: "I burned three afternoons of every project on auth and webhook boilerplate. That's gone.", a: 'M. Chen', r: 'Staff Eng, Helix' },
-              { q: "It's the first AI tool that produces a codebase I'd let through review without flinching.", a: 'P. Okafor', r: 'Tech Lead, Brigade' },
-              { q: "We use it to bootstrap every internal service. New repos are boring now. In a good way.", a: 'S. Vargas', r: 'Director, Caldera' },
-            ].map((t, i) => (
-              <div key={i} className="sf-card" style={{ padding: 22, minHeight: 200 }}>
-                <Sparkles size={14} className="sf-faint" />
-                <p style={{ fontSize: 15, lineHeight: 1.5, margin: '14px 0 22px', color: 'var(--sf-text)' }}>
-                  &ldquo;{t.q}&rdquo;
-                </p>
-                <div className="sf-row" style={{ gap: 10 }}>
-                  <div className="sf-avatar">{t.a.split(' ').map(s => s[0]).join('')}</div>
-                  <div>
-                    <div style={{ fontSize: 12.5, color: 'var(--sf-text)' }}>{t.a}</div>
-                    <div className="sf-faint" style={{ fontSize: 11.5, marginTop: 2 }}>{t.r}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ============ CTA ============ */}
       <section style={{ padding: '120px 24px', borderTop: '1px solid var(--sf-border)' }}>
         <div className="sf-card-elev" style={{
@@ -659,7 +630,7 @@ export function LandingPage() {
           </p>
           <div className="sf-row" style={{ gap: 10, justifyContent: 'center' }}>
             <Link href="/workspace" className="sf-btn sf-btn--primary sf-btn--lg">Start building <ChevronRight size={13} style={{ marginLeft: 4 }} /></Link>
-            <a className="sf-btn sf-btn--lg" style={{ background: 'transparent' }} href="#">Read the docs</a>
+            <Link className="sf-btn sf-btn--lg" style={{ background: 'transparent' }} href="/docs">Read the docs</Link>
           </div>
         </div>
       </section>
@@ -688,7 +659,9 @@ export function LandingPage() {
             ].map(c => (
               <div key={c.h} className="sf-col" style={{ gap: 7, minWidth: 120 }}>
                 <div className="mono sf-faint" style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{c.h}</div>
-                {c.l.map(x => <a key={x} style={{ fontSize: 13, color: 'var(--sf-text-muted)', textDecoration: 'none' }} href="#">{x}</a>)}
+                {c.l.map(x => (
+                  <a key={x} style={{ fontSize: 13, color: 'var(--sf-text-muted)', textDecoration: 'none' }} href={x === 'Docs' ? '/docs' : '#'}>{x}</a>
+                ))}
               </div>
             ))}
           </div>
@@ -696,8 +669,8 @@ export function LandingPage() {
             <span className="mono sf-faint" style={{ fontSize: 11 }}>© 2026 Simplicit Labs, Inc.</span>
             <span className="sf-grow" />
             <span className="sf-row" style={{ gap: 18, fontSize: 11.5, color: 'var(--sf-text-faint)' }}>
-              <a href="#" style={{ textDecoration: 'none' }}>Privacy</a>
-              <a href="#" style={{ textDecoration: 'none' }}>Terms</a>
+              <Link href="/privacy" style={{ textDecoration: 'none', color: 'inherit' }}>Privacy</Link>
+              <Link href="/terms" style={{ textDecoration: 'none', color: 'inherit' }}>Terms</Link>
               <a href="#" style={{ textDecoration: 'none' }}>SOC 2</a>
               <a href="#" style={{ textDecoration: 'none' }}>DPA</a>
             </span>

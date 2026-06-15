@@ -217,7 +217,7 @@ export function ArchitectureGraph({ blueprint }: { blueprint: BackendBlueprint }
       id: `entity-${e.name}`,
       type: "ENTITY",
       title: e.name,
-      subtitle: e.table,
+      subtitle: e.tableName,
       icon: "Database",
       accent: "blue",
       width: getNodeWidth(e.name),
@@ -492,7 +492,7 @@ export function ArchitectureGraph({ blueprint }: { blueprint: BackendBlueprint }
                     <div className="sf-card" style={{ padding: 12, background: "var(--sf-bg)" }}>
                        <div className="sf-row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
                           <span className="sf-muted" style={{ fontSize: 12 }}>Table Name</span>
-                          <span className="mono" style={{ fontSize: 12 }}>{(selectedNode.data as BlueprintEntity).table}</span>
+                          <span className="mono" style={{ fontSize: 12 }}>{(selectedNode.data as BlueprintEntity).tableName}</span>
                        </div>
                        <div className="sf-vdivider" style={{ width: "100%", height: 1, margin: "8px 0", opacity: 0.5 }} />
                        <div className="sf-col" style={{ gap: 6 }}>

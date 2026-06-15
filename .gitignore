@@ -8,3 +8,6 @@ dist
 coverage
 *.log
 
+# CodeGraph local index
+.codegraph/
+

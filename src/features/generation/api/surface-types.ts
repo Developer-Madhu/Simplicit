@@ -26,7 +26,7 @@ export interface DtoField {
   validation?: BlueprintValidation;
 }
 
-export interface ServiceDefinition extends BlueprintService {
+export interface ServiceDefinition extends Omit<BlueprintService, "methods"> {
   methods: ServiceMethodDefinition[];
 }
 

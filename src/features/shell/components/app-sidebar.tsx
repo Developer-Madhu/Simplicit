@@ -255,26 +255,6 @@ export function AppSidebar({ forceExpanded = false }: AppSidebarProps) {
         </button>
       )}
 
-      {/* Usage card */}
-      {!collapsed && (
-        <div className="sf-card" style={{ padding: 10, marginTop: 10, background: 'var(--sf-surface)' }}>
-          <div className="sf-row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 11.5 }} className="sf-muted">Generations</span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--sf-text)' }}>42 / 100</span>
-          </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ width: '42%', height: '100%', background: 'var(--sf-text)', borderRadius: 999 }} />
-          </div>
-          <button 
-            className="sf-btn sf-btn--sm" 
-            style={{ width: '100%', marginTop: 10, justifyContent: 'center' }} 
-            type="button"
-            onClick={() => router.push("/settings")}
-          >
-            Upgrade plan
-          </button>
-        </div>
-      )}
     </aside>
   );
 }
